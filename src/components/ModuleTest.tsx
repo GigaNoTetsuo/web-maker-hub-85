@@ -164,16 +164,7 @@ const ModuleTest = ({ courseId, moduleId, moduleName, onTestComplete, onSkip }: 
         passed,
       });
 
-      if (passed) {
-        const certificateNumber = `GP-M-${courseId}-${moduleId}-${user.id.slice(0, 8)}-${Date.now()}`;
-        await supabase.from("module_certificates").insert({
-          user_id: user.id,
-          course_id: courseId,
-          module_id: moduleId,
-          module_name: moduleName,
-          certificate_number: certificateNumber,
-        });
-      }
+      // Module certificates removed - only course certifications award certificates
     }
 
     onTestComplete(passed);
@@ -376,12 +367,12 @@ const ModuleTest = ({ courseId, moduleId, moduleName, onTestComplete, onSkip }: 
               <div className="flex items-center justify-center gap-3 mb-3">
                 <Trophy className="w-6 h-6 text-green-600" />
                 <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-base py-2 px-4 border-0">
-                  Certificate Earned!
+                  Challenge Completed!
                 </Badge>
                 <Star className="w-6 h-6 text-yellow-500" />
               </div>
               <p className="text-sm text-muted-foreground">
-                Your certificate has been added to your profile
+                Great job! Continue to complete all modules and ace the final course test to earn your certificate.
               </p>
             </div>
           )}

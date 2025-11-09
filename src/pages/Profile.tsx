@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import Certificate from "@/components/Certificate";
 import { 
   Award,
   TreeDeciduous,
@@ -31,6 +33,8 @@ const Profile = () => {
   const [certificates, setCertificates] = useState<any[]>([]);
   const [moduleCertificates, setModuleCertificates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCertificate, setSelectedCertificate] = useState<any>(null);
+  const [showCertificateDialog, setShowCertificateDialog] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -297,7 +301,10 @@ const Profile = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => navigate(`/learn/${cert.course_id}`)}
+                          onClick={() => {
+                            setSelectedCertificate(cert);
+                            setShowCertificateDialog(true);
+                          }}
                         >
                           View
                         </Button>
@@ -450,6 +457,23 @@ const Profile = () => {
           </div>
         </div>
       </div>
+
+      {/* Certificate Dialog */}
+      <Dialog open={showCertificateDialog} onOpenChange={setShowCertificateDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Course Certificate</DialogTitle>
+          </DialogHeader>
+          {selectedCertificate && (
+            <Certificate
+              courseName={selectedCertificate.course_name}
+              userName={userName}
+              certificateNumber={selectedCertificate.certificate_number}
+              issuedDate={selectedCertificate.issued_at}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
