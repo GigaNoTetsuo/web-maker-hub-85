@@ -201,7 +201,7 @@ Consider whether you're planting for:
           title: "Watering and Maintenance",
           type: "video",
           duration: "12 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/etTwv3I4iXk",
           content: "Master the art of proper tree watering and ongoing care."
         },
         {
@@ -250,7 +250,7 @@ If harvesting timber:
           title: "Introduction to Solar Energy",
           type: "video",
           duration: "20 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/1RMHV30tE9Y",
           content: "Understanding solar energy fundamentals, photovoltaic technology, and how solar panels convert sunlight into electricity."
         },
         {
@@ -289,7 +289,7 @@ If harvesting timber:
           title: "Site Assessment and Planning",
           type: "video",
           duration: "22 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/etTwv3I4iXk",
           content: "Learn how to evaluate roof conditions, sun exposure, shading analysis, and structural requirements."
         },
         {
@@ -324,7 +324,7 @@ If harvesting timber:
           title: "System Monitoring",
           type: "video",
           duration: "18 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/1RMHV30tE9Y",
           content: "Understanding monitoring systems, performance metrics, and troubleshooting common issues."
         },
         {
@@ -359,7 +359,7 @@ If harvesting timber:
           title: "Safety and Regulations",
           type: "video",
           duration: "20 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/etTwv3I4iXk",
           content: "Understanding electrical codes, permitting requirements, and safety standards."
         },
         {
@@ -407,7 +407,7 @@ If harvesting timber:
           title: "Water Crisis Overview",
           type: "video",
           duration: "15 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/1RMHV30tE9Y",
           content: "Understanding global water scarcity, the importance of conservation, and the impact of water waste."
         },
         {
@@ -448,7 +448,7 @@ If harvesting timber:
           title: "Outdoor Water Management",
           type: "video",
           duration: "22 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/etTwv3I4iXk",
           content: "Learn efficient irrigation, xeriscaping, and landscape water management techniques."
         },
         {
@@ -536,7 +536,7 @@ NOT from toilets (blackwater)
           title: "Introduction to Renewable Energy",
           type: "video",
           duration: "18 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/1RMHV30tE9Y",
           content: "Overview of renewable energy sources, their importance, and the global transition to clean energy."
         },
         {
@@ -575,7 +575,7 @@ NOT from toilets (blackwater)
           title: "Wind Power",
           type: "video",
           duration: "20 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/etTwv3I4iXk",
           content: "Understanding wind turbines, wind farm operations, and small-scale wind energy systems."
         },
         {
@@ -613,7 +613,7 @@ NOT from toilets (blackwater)
           title: "Geothermal and Biomass",
           type: "video",
           duration: "20 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/1RMHV30tE9Y",
           content: "Exploring geothermal heat pumps, power plants, and biomass energy generation."
         },
         {
@@ -696,7 +696,7 @@ NOT from toilets (blackwater)
           title: "Waste Management Overview",
           type: "video",
           duration: "16 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/etTwv3I4iXk",
           content: "Understanding waste hierarchy, global waste crisis, and the importance of proper waste management."
         },
         {
@@ -737,7 +737,7 @@ NOT from toilets (blackwater)
           title: "Recycling Systems",
           type: "video",
           duration: "22 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/1RMHV30tE9Y",
           content: "How recycling facilities work, material processing, and what happens to recycled materials."
         },
         {
@@ -785,7 +785,7 @@ NOT from toilets (blackwater)
           title: "E-Waste Management",
           type: "video",
           duration: "18 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/etTwv3I4iXk",
           content: "Handling electronic waste properly, data security, and recycling electronics responsibly."
         },
         {
@@ -844,7 +844,7 @@ NOT from toilets (blackwater)
           title: "Introduction to Energy Auditing",
           type: "video",
           duration: "20 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/1RMHV30tE9Y",
           content: "Understanding energy audits, their importance, and the auditing process."
         },
         {
@@ -888,7 +888,7 @@ NOT from toilets (blackwater)
           title: "Diagnostic Tools and Equipment",
           type: "video",
           duration: "24 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/etTwv3I4iXk",
           content: "Using blower doors, thermal cameras, power meters, and other diagnostic equipment."
         },
         {
@@ -939,7 +939,7 @@ NOT from toilets (blackwater)
           title: "HVAC System Evaluation",
           type: "video",
           duration: "26 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/1RMHV30tE9Y",
           content: "Assessing heating, cooling, and ventilation systems for efficiency and performance."
         },
         {
@@ -992,7 +992,7 @@ NOT from toilets (blackwater)
           title: "Water Heating Systems",
           type: "video",
           duration: "20 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/etTwv3I4iXk",
           content: "Evaluating water heater efficiency, sizing, and alternative technologies."
         },
         {
