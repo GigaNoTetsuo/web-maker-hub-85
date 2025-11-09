@@ -31,10 +31,24 @@ const Dashboard = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       navigate("/auth");
-    } else {
-      setUser(user);
-      setLoading(false);
+      return;
     }
+
+    // If user is admin, redirect to admin portal
+    const { data: role } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    if (role) {
+      navigate("/admin");
+      return;
+    }
+
+    setUser(user);
+    setLoading(false);
   };
 
   if (loading) {
