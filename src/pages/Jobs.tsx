@@ -390,12 +390,12 @@ const Jobs = () => {
               Climate Micro-Jobs
             </h1>
             <p className="text-muted-foreground">
-              AI-matched opportunities based on your local climate conditions
+              Find AI-matched climate work opportunities or submit your completed climate actions to earn benefits
             </p>
           </div>
-          <Button onClick={() => navigate("/jobs/post")} className="gap-2 shrink-0">
+          <Button onClick={() => navigate("/jobs/submit")} className="gap-2 shrink-0">
             <Plus className="h-4 w-4" />
-            Post Micro Job
+            Submit My Work
           </Button>
         </div>
           

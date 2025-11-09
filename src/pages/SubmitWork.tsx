@@ -32,7 +32,7 @@ const workTypes = [
   "Other"
 ];
 
-const PostMicroJob = () => {
+const SubmitWork = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
@@ -90,7 +90,7 @@ const PostMicroJob = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("You must be logged in to post a job");
+        toast.error("You must be logged in to submit your work");
         navigate("/auth");
         return;
       }
@@ -136,11 +136,11 @@ const PostMicroJob = () => {
 
       if (insertError) throw insertError;
 
-      toast.success("Micro job posted successfully! It will be reviewed shortly.");
+      toast.success("Work submitted successfully! It will be reviewed shortly and you'll earn benefit points once approved.");
       navigate("/jobs");
     } catch (error: any) {
-      console.error("Error posting micro job:", error);
-      toast.error(error.message || "Failed to post micro job");
+      console.error("Error submitting work:", error);
+      toast.error(error.message || "Failed to submit work");
     } finally {
       setIsSubmitting(false);
     }
@@ -150,9 +150,9 @@ const PostMicroJob = () => {
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 py-8 px-4">
       <div className="max-w-2xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Post a Micro Job</h1>
+          <h1 className="text-4xl font-bold text-foreground mb-2">Submit Your Climate Work</h1>
           <p className="text-muted-foreground">
-            Share your climate action work and earn benefit points!
+            Log your completed climate action work with proof and earn benefit points!
           </p>
         </div>
 
@@ -164,9 +164,9 @@ const PostMicroJob = () => {
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Job Title</FormLabel>
+                    <FormLabel>Work Title</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Planted 10 trees in local park" {...field} />
+                      <Input placeholder="e.g., Planted 10 trees in Central Park" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -206,7 +206,7 @@ const PostMicroJob = () => {
                     <FormLabel>Description</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Describe what you did and its impact..."
+                        placeholder="Describe what you did, how much time it took, and its environmental impact..."
                         className="min-h-[120px]"
                         {...field}
                       />
@@ -241,7 +241,8 @@ const PostMicroJob = () => {
               />
 
               <div>
-                <FormLabel>Upload Photo or Video</FormLabel>
+                <FormLabel>Upload Proof (Photo or Video) *</FormLabel>
+                <p className="text-xs text-muted-foreground mb-2">Required to verify your work and earn points</p>
                 <div className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center">
                   <input
                     type="file"
@@ -286,10 +287,10 @@ const PostMicroJob = () => {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Posting...
+                      Submitting...
                     </>
                   ) : (
-                    "Post Job"
+                    "Submit Work"
                   )}
                 </Button>
               </div>
@@ -301,4 +302,4 @@ const PostMicroJob = () => {
   );
 };
 
-export default PostMicroJob;
+export default SubmitWork;
