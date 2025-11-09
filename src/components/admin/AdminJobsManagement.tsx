@@ -73,7 +73,8 @@ const AdminJobsManagement = () => {
         profiles!micro_jobs_user_id_fkey (full_name)
       `)
       .not("media_url", "is", null)
-      .in("status", ["approved", "pending"])
+      .neq("status", "verified")
+      .neq("status", "rejected")
       .order("created_at", { ascending: false });
 
     if (error) {
