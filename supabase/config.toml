@@ -1,1 +1,10 @@
 project_id = "elvqhztredjampvqemav"
+
+[functions.generate-module-questions]
+verify_jwt = false
+
+[functions.generate-course-questions]
+verify_jwt = false
+
+[functions.generate-course-content]
+verify_jwt = false
