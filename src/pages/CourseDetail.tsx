@@ -126,7 +126,7 @@ const CourseDetail = () => {
           title: "Introduction to Forestry",
           type: "video",
           duration: "15 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/etTwv3I4iXk",
           content: "Welcome to Tree Plantation & Forest Management. In this module, you'll learn the basics of sustainable forestry practices."
         },
         {
@@ -166,7 +166,7 @@ Consider whether you're planting for:
           title: "Soil Preparation Techniques",
           type: "video",
           duration: "18 min",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          videoUrl: "https://www.youtube.com/embed/1RMHV30tE9Y",
           content: "Learn proper soil preparation methods for optimal tree growth."
         },
         {

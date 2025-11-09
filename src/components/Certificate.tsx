@@ -1,6 +1,11 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Award, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Trophy, Award, Calendar, Download } from "lucide-react";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import { useRef } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface CertificateProps {
   courseName: string;
@@ -15,8 +20,44 @@ const Certificate = ({
   certificateNumber,
   issuedDate,
 }: CertificateProps) => {
+  const certificateRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+
+  const handleDownload = async () => {
+    if (!certificateRef.current) return;
+
+    try {
+      const canvas = await html2canvas(certificateRef.current, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "px",
+        format: [canvas.width, canvas.height],
+      });
+
+      pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+      pdf.save(`${courseName}-Certificate-${certificateNumber}.pdf`);
+
+      toast({
+        title: "Certificate Downloaded",
+        description: "Your certificate has been saved as PDF",
+      });
+    } catch (error) {
+      toast({
+        title: "Download Failed",
+        description: "Unable to download certificate. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
-    <Card className="p-8 bg-gradient-to-br from-primary/5 via-card to-secondary/5 border-2 border-primary/20">
+    <div className="space-y-4">
+      <Card ref={certificateRef} className="p-8 bg-gradient-to-br from-primary/5 via-card to-secondary/5 border-2 border-primary/20">
       <div className="text-center space-y-6">
         <div className="flex items-center justify-center gap-4">
           <div className="w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center">
@@ -78,6 +119,13 @@ const Certificate = ({
         </div>
       </div>
     </Card>
+    <div className="flex justify-center">
+      <Button onClick={handleDownload} className="gap-2">
+        <Download className="w-4 h-4" />
+        Download Certificate as PDF
+      </Button>
+    </div>
+    </div>
   );
 };
 

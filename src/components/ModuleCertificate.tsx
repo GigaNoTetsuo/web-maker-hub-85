@@ -3,6 +3,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Trophy, Award, Calendar, Share2, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import { useRef } from "react";
 
 interface ModuleCertificateProps {
   moduleName: string;
@@ -20,6 +23,7 @@ const ModuleCertificate = ({
   issuedDate,
 }: ModuleCertificateProps) => {
   const { toast } = useToast();
+  const certificateRef = useRef<HTMLDivElement>(null);
 
   const handleShare = async () => {
     const shareText = `I just completed "${moduleName}" from the ${courseName} course on GreenPath! 🌱\n\nCertificate #${certificateNumber}`;
@@ -43,17 +47,41 @@ const ModuleCertificate = ({
     }
   };
 
-  const handleDownload = () => {
-    // In a real app, this would generate a PDF
-    toast({
-      title: "Download started",
-      description: "Your certificate is being prepared",
-    });
+  const handleDownload = async () => {
+    if (!certificateRef.current) return;
+
+    try {
+      const canvas = await html2canvas(certificateRef.current, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "px",
+        format: [canvas.width, canvas.height],
+      });
+
+      pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+      pdf.save(`${moduleName}-Certificate-${certificateNumber}.pdf`);
+
+      toast({
+        title: "Certificate Downloaded",
+        description: "Your module certificate has been saved as PDF",
+      });
+    } catch (error) {
+      toast({
+        title: "Download Failed",
+        description: "Unable to download certificate. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
     <div className="space-y-4">
-      <Card className="p-8 bg-gradient-to-br from-primary/5 via-card to-secondary/5 border-2 border-primary/20">
+      <Card ref={certificateRef} className="p-8 bg-gradient-to-br from-primary/5 via-card to-secondary/5 border-2 border-primary/20">
         <div className="text-center space-y-6">
           <div className="flex items-center justify-center gap-4">
             <div className="w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center">
