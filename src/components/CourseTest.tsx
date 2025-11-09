@@ -34,11 +34,51 @@ const CourseTest = ({ courseId, courseName, onTestComplete }: CourseTestProps) =
   const [testStarted, setTestStarted] = useState(false);
   const [testFinished, setTestFinished] = useState(false);
   const [score, setScore] = useState(0);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadQuestions();
-  }, [courseId]);
+  const loadQuestions = async () => {
+    try {
+      toast({
+        title: "Generating Test...",
+        description: "AI is creating your certification exam",
+      });
+
+      const { data, error } = await supabase.functions.invoke('generate-course-questions', {
+        body: {
+          courseId,
+          courseName,
+          numQuestions: 10
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.questions) {
+        const formattedQuestions = data.questions.map((q: any) => ({
+          id: `${courseId}-${Math.random()}`,
+          ...q,
+          options: Array.isArray(q.options) ? q.options : JSON.parse(q.options),
+        }));
+        setQuestions(formattedQuestions);
+        setSelectedAnswers(new Array(formattedQuestions.length).fill(-1));
+        
+        toast({
+          title: "Ready!",
+          description: "Your certification test is ready",
+        });
+      } else {
+        throw new Error(data.error || "Failed to generate questions");
+      }
+    } catch (error) {
+      console.error('Error loading questions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate test questions. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     if (testStarted && !testFinished && timeLeft > 0) {
@@ -55,33 +95,11 @@ const CourseTest = ({ courseId, courseName, onTestComplete }: CourseTestProps) =
     }
   }, [testStarted, testFinished, timeLeft]);
 
-  const loadQuestions = async () => {
-    const { data, error } = await supabase
-      .from("test_questions")
-      .select("*")
-      .eq("course_id", courseId);
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load test questions",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (data && data.length > 0) {
-      const formattedQuestions = data.map((q) => ({
-        ...q,
-        options: Array.isArray(q.options) ? q.options : JSON.parse(q.options as unknown as string),
-      }));
-      setQuestions(formattedQuestions);
-      setSelectedAnswers(new Array(formattedQuestions.length).fill(-1));
-    }
-  };
-
-  const handleStartTest = () => {
+  const handleStartTest = async () => {
+    setLoading(true);
     setTestStarted(true);
+    await loadQuestions();
+    setLoading(false);
   };
 
   const handleSelectAnswer = (answerIndex: number) => {
@@ -150,14 +168,6 @@ const CourseTest = ({ courseId, courseName, onTestComplete }: CourseTestProps) =
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  if (questions.length === 0) {
-    return (
-      <Card className="p-6 bg-card border-border">
-        <p className="text-center text-muted-foreground">Loading test...</p>
-      </Card>
-    );
-  }
-
   if (!testStarted) {
     return (
       <Card className="p-8 bg-card border-border">
@@ -208,11 +218,36 @@ const CourseTest = ({ courseId, courseName, onTestComplete }: CourseTestProps) =
 
           <Button
             onClick={handleStartTest}
+            disabled={loading}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             size="lg"
           >
-            Start Test
+            {loading ? "Generating Test..." : "Start Test"}
           </Button>
+        </div>
+      </Card>
+    );
+  }
+
+  if (testStarted && questions.length === 0 && loading) {
+    return (
+      <Card className="p-8 bg-gradient-to-br from-primary/10 via-secondary/5 to-background border-2 border-primary/20 animate-fade-in">
+        <div className="text-center space-y-6">
+          <div className="relative w-24 h-24 mx-auto">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-full animate-pulse opacity-20"></div>
+            <div className="relative w-24 h-24 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center animate-spin">
+              <Trophy className="w-12 h-12 text-white" />
+            </div>
+          </div>
+          
+          <div>
+            <h2 className="text-3xl font-bold text-foreground mb-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              Generating Certification Test
+            </h2>
+            <p className="text-muted-foreground">
+              AI is creating your personalized certification exam...
+            </p>
+          </div>
         </div>
       </Card>
     );

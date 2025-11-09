@@ -88,28 +88,7 @@ The correct_answer should be the index (0-3) of the correct option.`;
       throw new Error('Failed to parse generated questions');
     }
 
-    // Store questions in database
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const questionsToInsert = questions.map((q: any) => ({
-      course_id: courseId,
-      question: q.question,
-      options: q.options,
-      correct_answer: q.correct_answer,
-    }));
-
-    const { error: insertError } = await supabase
-      .from('test_questions')
-      .insert(questionsToInsert);
-
-    if (insertError) {
-      console.error('Database insert error:', insertError);
-      throw new Error('Failed to store questions in database');
-    }
-
-    console.log(`Successfully generated and stored ${questions.length} certification questions`);
+    console.log(`Successfully generated ${questions.length} certification questions in runtime`);
 
     return new Response(
       JSON.stringify({ 

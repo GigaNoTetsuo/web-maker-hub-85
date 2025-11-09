@@ -50,40 +50,58 @@ const ModuleTest = ({ courseId, moduleId, moduleName, onTestComplete, onSkip }: 
   const [earnedXP, setEarnedXP] = useState(0);
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadQuestions();
-  }, [courseId, moduleId]);
-
   const loadQuestions = async () => {
-    const { data, error } = await supabase
-      .from("module_test_questions")
-      .select("*")
-      .eq("course_id", courseId)
-      .eq("module_id", moduleId);
+    try {
+      toast({
+        title: "Generating Questions...",
+        description: "AI is creating your personalized challenge",
+      });
 
-    if (error) {
+      const { data, error } = await supabase.functions.invoke('generate-module-questions', {
+        body: {
+          courseId,
+          moduleId,
+          moduleName,
+          numQuestions: 5
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.questions) {
+        const formattedQuestions = data.questions.map((q: any) => ({
+          id: `${courseId}-${moduleId}-${Math.random()}`,
+          ...q,
+          options: Array.isArray(q.options) ? q.options : JSON.parse(q.options),
+        }));
+        setQuestions(formattedQuestions);
+        setSelectedAnswers(new Array(formattedQuestions.length).fill(-1));
+        
+        toast({
+          title: "Ready!",
+          description: "Your challenge questions are ready",
+        });
+      } else {
+        throw new Error(data.error || "Failed to generate questions");
+      }
+    } catch (error) {
+      console.error('Error loading questions:', error);
       toast({
         title: "Error",
-        description: "Failed to load test questions",
+        description: "Failed to generate test questions. Please try again.",
         variant: "destructive",
       });
-      return;
-    }
-
-    if (data && data.length > 0) {
-      const formattedQuestions = data.map((q) => ({
-        ...q,
-        options: Array.isArray(q.options) ? q.options : JSON.parse(q.options as unknown as string),
-      }));
-      setQuestions(formattedQuestions);
-      setSelectedAnswers(new Array(formattedQuestions.length).fill(-1));
     }
   };
 
-  const handleStartTest = () => {
+  const handleStartTest = async () => {
+    setLoading(true);
     setTestStarted(true);
+    await loadQuestions();
+    setLoading(false);
   };
 
   const handleSelectAnswer = (answerIndex: number) => {
@@ -169,14 +187,6 @@ const ModuleTest = ({ courseId, moduleId, moduleName, onTestComplete, onSkip }: 
 
     onTestComplete(passed);
   };
-
-  if (questions.length === 0) {
-    return (
-      <Card className="p-6 bg-card border-border">
-        <p className="text-center text-muted-foreground">Loading test...</p>
-      </Card>
-    );
-  }
 
   if (!testStarted) {
     return (
@@ -280,12 +290,37 @@ const ModuleTest = ({ courseId, moduleId, moduleName, onTestComplete, onSkip }: 
             </Button>
             <Button
               onClick={handleStartTest}
+              disabled={loading}
               className="bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90 shadow-lg hover:shadow-xl transition-all"
               size="lg"
             >
               <Target className="w-5 h-5 mr-2" />
-              Start Challenge
+              {loading ? "Generating..." : "Start Challenge"}
             </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  if (testStarted && questions.length === 0 && loading) {
+    return (
+      <Card className="p-8 bg-gradient-to-br from-primary/10 via-secondary/5 to-background border-2 border-primary/20 animate-fade-in">
+        <div className="text-center space-y-6">
+          <div className="relative w-24 h-24 mx-auto">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-full animate-pulse opacity-20"></div>
+            <div className="relative w-24 h-24 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center animate-spin">
+              <Brain className="w-12 h-12 text-white" />
+            </div>
+          </div>
+          
+          <div>
+            <h2 className="text-3xl font-bold text-foreground mb-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              Generating Your Challenge
+            </h2>
+            <p className="text-muted-foreground">
+              AI is creating personalized questions for you...
+            </p>
           </div>
         </div>
       </Card>
