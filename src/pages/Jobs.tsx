@@ -182,27 +182,38 @@ const Jobs = () => {
   const getRecommendations = async (uid: string) => {
     setIsLoadingRecommendations(true);
     try {
+      // Send jobs without icon property (can't serialize React components)
+      const jobsForApi = allJobs.map(({ icon, ...job }) => job);
+      
       const { data, error } = await supabase.functions.invoke('recommend-jobs', {
-        body: { userId: uid, jobs: allJobs }
+        body: { userId: uid, jobs: jobsForApi }
       });
 
       if (error) throw error;
 
       console.log('Recommended jobs:', data);
-      setAllJobsWithScores(data.jobs);
+      
+      // Merge scores back with original jobs (including icons)
+      const jobsWithScores = allJobs.map((originalJob, index) => ({
+        ...originalJob,
+        recommendationScore: data.jobs[index]?.recommendationScore || 0,
+        matchedSkills: data.jobs[index]?.matchedSkills || []
+      }));
+      
+      setAllJobsWithScores(jobsWithScores);
       
       if (filterMode === "recommended") {
-        const recommended = data.jobs.filter(
+        const recommended = jobsWithScores.filter(
           (job: any) => (job.recommendationScore || 0) >= 50
         );
-        setJobs(recommended.length > 0 ? recommended : data.jobs);
+        setJobs(recommended.length > 0 ? recommended : jobsWithScores);
       } else {
-        setJobs(data.jobs);
+        setJobs(jobsWithScores);
       }
 
       toast({
         title: "Jobs Personalized",
-        description: `Found ${data.jobs.filter((j: any) => (j.recommendationScore || 0) >= 50).length} jobs matching your skills`,
+        description: `Found ${jobsWithScores.filter((j: any) => (j.recommendationScore || 0) >= 50).length} jobs matching your skills`,
       });
     } catch (error) {
       console.error('Error getting recommendations:', error);
@@ -231,11 +242,14 @@ const Jobs = () => {
         setLocationGranted(true);
 
         try {
+          // Send jobs without icon property (can't serialize React components)
+          const jobsForApi = allJobs.map(({ icon, ...job }) => job);
+          
           const { data, error } = await supabase.functions.invoke('match-climate-jobs', {
             body: {
               latitude,
               longitude,
-              jobs: allJobs,
+              jobs: jobsForApi,
             },
           });
 
@@ -243,16 +257,27 @@ const Jobs = () => {
 
           console.log('Climate-matched jobs:', data);
           setClimateData(data.climate);
-          setAllJobsWithScores(data.jobs);
+          
+          // Merge climate ranking back with original jobs (including icons)
+          const rankedJobsWithIcons = data.jobs.map((apiJob: any) => {
+            const originalJob = allJobs.find(j => j.id === apiJob.id);
+            return {
+              ...originalJob,
+              ...apiJob,
+              icon: originalJob?.icon // Preserve the icon
+            };
+          });
+          
+          setAllJobsWithScores(rankedJobsWithIcons);
           
           // Apply filter based on current mode
           if (filterMode === "recommended" && userId) {
-            const recommended = data.jobs.filter(
+            const recommended = rankedJobsWithIcons.filter(
               (job: any) => (job.recommendationScore || 0) >= 50
             );
-            setJobs(recommended.length > 0 ? recommended : data.jobs);
+            setJobs(recommended.length > 0 ? recommended : rankedJobsWithIcons);
           } else {
-            setJobs(data.jobs);
+            setJobs(rankedJobsWithIcons);
           }
 
           toast({
