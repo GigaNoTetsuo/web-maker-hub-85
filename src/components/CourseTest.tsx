@@ -70,10 +70,10 @@ const CourseTest = ({ courseId, courseName, onTestComplete }: CourseTestProps) =
       return;
     }
 
-    if (data) {
+    if (data && data.length > 0) {
       const formattedQuestions = data.map((q) => ({
         ...q,
-        options: JSON.parse(q.options as unknown as string),
+        options: Array.isArray(q.options) ? q.options : JSON.parse(q.options as unknown as string),
       }));
       setQuestions(formattedQuestions);
       setSelectedAnswers(new Array(formattedQuestions.length).fill(-1));
