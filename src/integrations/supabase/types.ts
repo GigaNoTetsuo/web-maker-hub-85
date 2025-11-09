@@ -84,6 +84,51 @@ export type Database = {
           },
         ]
       }
+      job_applications: {
+        Row: {
+          applicant_email: string
+          applicant_name: string
+          applicant_phone: string | null
+          availability: string
+          cover_letter: string
+          created_at: string
+          id: string
+          job_id: string
+          job_title: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          applicant_email: string
+          applicant_name: string
+          applicant_phone?: string | null
+          availability: string
+          cover_letter: string
+          created_at?: string
+          id?: string
+          job_id: string
+          job_title: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          applicant_email?: string
+          applicant_name?: string
+          applicant_phone?: string | null
+          availability?: string
+          cover_letter?: string
+          created_at?: string
+          id?: string
+          job_id?: string
+          job_title?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       module_certificates: {
         Row: {
           certificate_number: string
