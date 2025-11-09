@@ -72,7 +72,8 @@ const AdminJobsManagement = () => {
         *,
         profiles!micro_jobs_user_id_fkey (full_name)
       `)
-      .eq("status", "approved")
+      .not("media_url", "is", null)
+      .in("status", ["approved", "pending"])
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -233,90 +234,109 @@ const AdminJobsManagement = () => {
         <Card>
           <CardHeader>
             <CardTitle>Work Verification</CardTitle>
-            <CardDescription>Review and verify submitted work</CardDescription>
+            <CardDescription>Review and verify submitted work from users</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {workSubmissions.map((job) => (
-                <div key={job.id} className="border p-4 rounded-lg space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{job.title}</h3>
-                      <p className="text-sm text-muted-foreground">{job.description}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Submitted by: {job.profiles?.full_name || "Unknown"}
-                      </p>
-                      {job.media_url && (
-                        <div className="mt-2">
-                          {job.media_type === "image" ? (
-                            <img
-                              src={job.media_url}
-                              alt="Work submission"
-                              className="w-48 h-48 object-cover rounded"
-                            />
-                          ) : (
-                            <video
-                              src={job.media_url}
-                              controls
-                              className="w-48 h-48 rounded"
-                            />
-                          )}
+              {workSubmissions.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  No work submissions to verify yet
+                </p>
+              ) : (
+                workSubmissions.map((job) => (
+                  <div key={job.id} className="border p-4 rounded-lg space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-semibold">{job.title}</h3>
+                          <Badge variant={job.status === "approved" ? "default" : "secondary"}>
+                            {job.status}
+                          </Badge>
                         </div>
-                      )}
-                    </div>
-                    <div>
-                      {selectedJob === job.id ? (
-                        <div className="space-y-2 min-w-[200px]">
-                          <Input
-                            type="number"
-                            placeholder="Payment amount"
-                            value={paymentAmount}
-                            onChange={(e) => setPaymentAmount(e.target.value)}
-                          />
-                          <Textarea
-                            placeholder="Admin notes (optional)"
-                            value={adminNotes}
-                            onChange={(e) => setAdminNotes(e.target.value)}
-                          />
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleVerifyWork(job.id, true)}
-                            >
-                              Verify & Pay
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleVerifyWork(job.id, false)}
-                            >
-                              Reject
-                            </Button>
+                        <p className="text-sm text-muted-foreground">{job.description}</p>
+                        <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                          <span>Submitted by: {job.profiles?.full_name || "Unknown"}</span>
+                          <span>Location: {job.location}</span>
+                          <span>Type: {job.work_type}</span>
+                          <span>Points: {job.benefit_points}</span>
+                        </div>
+                        {job.media_url && (
+                          <div className="mt-3">
+                            <p className="text-xs font-medium mb-2">Submitted Work:</p>
+                            {job.media_type === "image" ? (
+                              <img
+                                src={job.media_url}
+                                alt="Work submission"
+                                className="max-w-md w-full h-auto object-cover rounded border"
+                              />
+                            ) : (
+                              <video
+                                src={job.media_url}
+                                controls
+                                className="max-w-md w-full h-auto rounded border"
+                              />
+                            )}
                           </div>
+                        )}
+                      </div>
+                      <div className="flex-shrink-0">
+                        {selectedJob === job.id ? (
+                          <div className="space-y-2 min-w-[200px]">
+                            <Input
+                              type="number"
+                              placeholder="Payment amount"
+                              value={paymentAmount}
+                              onChange={(e) => setPaymentAmount(e.target.value)}
+                            />
+                            <Textarea
+                              placeholder="Admin notes (optional)"
+                              value={adminNotes}
+                              onChange={(e) => setAdminNotes(e.target.value)}
+                              rows={3}
+                            />
+                            <div className="flex flex-col gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handleVerifyWork(job.id, true)}
+                                className="w-full"
+                              >
+                                Verify & Pay
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleVerifyWork(job.id, false)}
+                                className="w-full"
+                              >
+                                Reject
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedJob(null);
+                                  setPaymentAmount("");
+                                  setAdminNotes("");
+                                }}
+                                className="w-full"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
                           <Button
                             size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedJob(null);
-                              setPaymentAmount("");
-                              setAdminNotes("");
-                            }}
+                            onClick={() => setSelectedJob(job.id)}
                           >
-                            Cancel
+                            Review Work
                           </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          size="sm"
-                          onClick={() => setSelectedJob(job.id)}
-                        >
-                          Process Payment
-                        </Button>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
