@@ -24,13 +24,18 @@ const Navigation = () => {
     return () => subscription.unsubscribe();
   }, []);
   
-  const navItems = [
+  const loggedOutNavItems = [
     { to: "/", icon: Home, label: "Home" },
+  ];
+
+  const loggedInNavItems = [
     { to: "/dashboard", icon: Leaf, label: "Dashboard" },
     { to: "/learn", icon: BookOpen, label: "Learn" },
     { to: "/jobs", icon: Briefcase, label: "Jobs" },
     { to: "/profile", icon: User, label: "Profile" },
   ];
+
+  const navItems = user ? loggedInNavItems : loggedOutNavItems;
 
   return (
     <nav className="bg-card border-b border-border sticky top-0 z-50 backdrop-blur-sm bg-card/95">
