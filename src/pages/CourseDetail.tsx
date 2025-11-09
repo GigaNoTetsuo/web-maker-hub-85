@@ -1285,15 +1285,13 @@ NOT from toilets (blackwater)
                   {currentModuleData.type === "video" && (
                     <div className="space-y-4">
                       <div className="aspect-video bg-muted rounded-lg overflow-hidden border border-border">
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/5 to-secondary/5">
-                          <div className="text-center">
-                            <Play className="w-16 h-16 text-primary mx-auto mb-4" />
-                            <p className="text-muted-foreground">Video Player</p>
-                            <p className="text-sm text-muted-foreground mt-2">
-                              Interactive video content would be embedded here
-                            </p>
-                          </div>
-                        </div>
+                        <iframe
+                          className="w-full h-full"
+                          src={currentModuleData.videoUrl}
+                          title={currentModuleData.title}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
                       </div>
                       <Card className="p-4 bg-muted/50 border-border">
                         <p className="text-sm text-foreground">{currentModuleData.content}</p>
