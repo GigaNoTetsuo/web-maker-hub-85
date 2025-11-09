@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.match-climate-jobs]
 verify_jwt = false
+
+[functions.recommend-jobs]
+verify_jwt = false

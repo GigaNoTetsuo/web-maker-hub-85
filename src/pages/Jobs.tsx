@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   TreeDeciduous, 
   Sun, 
@@ -15,7 +16,9 @@ import {
   Clock,
   TrendingUp,
   Loader2,
-  Wind
+  Wind,
+  Star,
+  Sparkles
 } from "lucide-react";
 
 const Jobs = () => {
@@ -23,6 +26,15 @@ const Jobs = () => {
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [climateData, setClimateData] = useState<any>(null);
   const [locationGranted, setLocationGranted] = useState(false);
+  const [filterMode, setFilterMode] = useState<"recommended" | "all">("recommended");
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userSkills, setUserSkills] = useState<string[]>([]);
+
+  type JobWithScores = typeof allJobs[0] & {
+    recommendationScore?: number;
+    matchedSkills?: string[];
+  };
 
   const allJobs = [
     {
@@ -117,12 +129,88 @@ const Jobs = () => {
     }
   ];
 
-  const [jobs, setJobs] = useState(allJobs);
+  const [jobs, setJobs] = useState<JobWithScores[]>(allJobs);
+  const [allJobsWithScores, setAllJobsWithScores] = useState<JobWithScores[]>(allJobs);
 
   useEffect(() => {
-    // Try to get location on mount
+    // Check for authenticated user
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        await fetchUserSkills(user.id);
+      }
+    };
+    
+    checkUser();
     getLocationAndMatchJobs();
   }, []);
+
+  useEffect(() => {
+    // Apply filter when mode changes
+    if (filterMode === "recommended") {
+      const recommended = allJobsWithScores.filter(
+        (job: any) => (job.recommendationScore || 0) >= 50
+      );
+      setJobs(recommended.length > 0 ? recommended : allJobsWithScores);
+    } else {
+      setJobs(allJobsWithScores);
+    }
+  }, [filterMode, allJobsWithScores]);
+
+  const fetchUserSkills = async (uid: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_skills')
+        .select('skill_name')
+        .eq('user_id', uid);
+
+      if (error) throw error;
+      
+      const skills = data?.map(s => s.skill_name) || [];
+      setUserSkills(skills);
+      console.log('User skills loaded:', skills);
+
+      if (skills.length > 0) {
+        await getRecommendations(uid);
+      }
+    } catch (error) {
+      console.error('Error fetching user skills:', error);
+    }
+  };
+
+  const getRecommendations = async (uid: string) => {
+    setIsLoadingRecommendations(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('recommend-jobs', {
+        body: { userId: uid, jobs: allJobs }
+      });
+
+      if (error) throw error;
+
+      console.log('Recommended jobs:', data);
+      setAllJobsWithScores(data.jobs);
+      
+      if (filterMode === "recommended") {
+        const recommended = data.jobs.filter(
+          (job: any) => (job.recommendationScore || 0) >= 50
+        );
+        setJobs(recommended.length > 0 ? recommended : data.jobs);
+      } else {
+        setJobs(data.jobs);
+      }
+
+      toast({
+        title: "Jobs Personalized",
+        description: `Found ${data.jobs.filter((j: any) => (j.recommendationScore || 0) >= 50).length} jobs matching your skills`,
+      });
+    } catch (error) {
+      console.error('Error getting recommendations:', error);
+      setAllJobsWithScores(allJobs);
+    } finally {
+      setIsLoadingRecommendations(false);
+    }
+  };
 
   const getLocationAndMatchJobs = async () => {
     if (!navigator.geolocation) {
@@ -155,7 +243,17 @@ const Jobs = () => {
 
           console.log('Climate-matched jobs:', data);
           setClimateData(data.climate);
-          setJobs(data.jobs);
+          setAllJobsWithScores(data.jobs);
+          
+          // Apply filter based on current mode
+          if (filterMode === "recommended" && userId) {
+            const recommended = data.jobs.filter(
+              (job: any) => (job.recommendationScore || 0) >= 50
+            );
+            setJobs(recommended.length > 0 ? recommended : data.jobs);
+          } else {
+            setJobs(data.jobs);
+          }
 
           toast({
             title: "Jobs Matched to Your Climate",
@@ -235,6 +333,55 @@ const Jobs = () => {
               <MapPin className="h-4 w-4 mr-2" />
               Enable Location for Climate-Matched Jobs
             </Button>
+          )}
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="mb-8 flex items-center justify-between">
+          <Tabs value={filterMode} onValueChange={(v) => setFilterMode(v as "recommended" | "all")}>
+            <TabsList>
+              <TabsTrigger value="recommended" className="gap-2">
+                <Sparkles className="h-4 w-4" />
+                Recommended For You
+                {userId && userSkills.length > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {allJobsWithScores.filter((j: any) => (j.recommendationScore || 0) >= 50).length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="all" className="gap-2">
+                All Jobs
+                <Badge variant="secondary" className="ml-1">
+                  {allJobsWithScores.length}
+                </Badge>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {userId && userSkills.length > 0 && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Star className="h-4 w-4 text-yellow-500" />
+              <span>Your skills: {userSkills.slice(0, 3).join(', ')}{userSkills.length > 3 ? '...' : ''}</span>
+            </div>
+          )}
+
+          {userId && userSkills.length === 0 && (
+            <div className="text-sm text-muted-foreground">
+              Add skills to your profile to see personalized recommendations
+            </div>
+          )}
+
+          {!userId && (
+            <div className="text-sm text-muted-foreground">
+              Sign in to get personalized job recommendations
+            </div>
+          )}
+
+          {isLoadingRecommendations && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Personalizing jobs...</span>
+            </div>
           )}
         </div>
 
@@ -319,12 +466,25 @@ const Jobs = () => {
                     </div>
                   </div>
                   
-                  <Badge 
-                    variant="secondary" 
-                    className="bg-primary/10 text-primary font-semibold"
-                  >
-                    {job.match}% Match
-                  </Badge>
+                  <div className="flex flex-col gap-1 items-end">
+                    {job.match && (
+                      <Badge 
+                        variant="secondary" 
+                        className="bg-blue-500/10 text-blue-500 font-semibold text-xs"
+                      >
+                        {job.match}% Climate Match
+                      </Badge>
+                    )}
+                    {job.recommendationScore !== undefined && job.recommendationScore >= 50 && (
+                      <Badge 
+                        variant="secondary" 
+                        className="bg-yellow-500/10 text-yellow-500 font-semibold text-xs flex items-center gap-1"
+                      >
+                        <Star className="h-3 w-3" />
+                        {job.recommendationScore}% Skills Match
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
                 {/* Description */}
@@ -350,15 +510,22 @@ const Jobs = () => {
 
                 {/* Skills */}
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {job.skills.map((skill) => (
-                    <Badge 
-                      key={skill} 
-                      variant="secondary" 
-                      className="bg-muted text-muted-foreground text-xs"
-                    >
-                      {skill}
-                    </Badge>
-                  ))}
+                  {job.skills.map((skill: string) => {
+                    const isMatched = job.matchedSkills?.includes(skill);
+                    return (
+                      <Badge 
+                        key={skill} 
+                        variant="secondary" 
+                        className={isMatched 
+                          ? "bg-green-500/10 text-green-600 border border-green-500/20 text-xs" 
+                          : "bg-muted text-muted-foreground text-xs"
+                        }
+                      >
+                        {isMatched && <Star className="h-3 w-3 mr-1 inline" />}
+                        {skill}
+                      </Badge>
+                    );
+                  })}
                   <Badge 
                     variant="secondary" 
                     className="bg-accent/10 text-accent text-xs"
