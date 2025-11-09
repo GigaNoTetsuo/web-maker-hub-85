@@ -22,9 +22,9 @@ serve(async (req) => {
 
     console.log(`Fetching climate data for coordinates: ${latitude}, ${longitude}`);
 
-    // Fetch current weather from Open-Meteo (free, no API key needed)
+    // Fetch weather and soil data from Open-Meteo (free, no API key needed)
     const weatherResponse = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto&past_days=7`
+      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,soil_temperature_0cm,soil_moisture_0_to_1cm&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto&past_days=7`
     );
 
     if (!weatherResponse.ok) {
@@ -34,14 +34,16 @@ serve(async (req) => {
     const weatherData = await weatherResponse.json();
     console.log('Weather data received:', weatherData);
 
-    // Prepare climate analysis prompt
-    const climatePrompt = `Analyze the following climate data and identify the main climate challenges:
+    // Prepare climate analysis prompt with soil conditions
+    const climatePrompt = `Analyze the following climate and soil data to identify the main environmental challenges:
 
 Current Conditions:
 - Temperature: ${weatherData.current.temperature_2m}°C
 - Humidity: ${weatherData.current.relative_humidity_2m}%
 - Precipitation: ${weatherData.current.precipitation}mm
 - Wind Speed: ${weatherData.current.wind_speed_10m}km/h
+- Soil Temperature: ${weatherData.current.soil_temperature_0cm}°C
+- Soil Moisture: ${weatherData.current.soil_moisture_0_to_1cm}%
 - Weather Code: ${weatherData.current.weather_code}
 
 Past 7 Days:
@@ -52,8 +54,8 @@ Past 7 Days:
 Available Jobs:
 ${jobs.map((job: any, idx: number) => `${idx + 1}. ${job.title} - ${job.description} (Type: ${job.type})`).join('\n')}
 
-Based on these climate conditions, rank the jobs by relevance (return job indices in order of relevance, most relevant first). 
-Consider factors like extreme temperatures, flooding risk, drought, air quality, etc.
+Based on these climate and soil conditions, rank the jobs by relevance (return job indices in order of relevance, most relevant first). 
+Consider factors like: extreme temperatures, flooding risk, drought, soil health, moisture levels, planting conditions, water conservation needs, etc.
 Return ONLY a JSON array of job indices (0-based) in order of relevance, like: [2, 0, 5, 1, 3, 4, 6, 7, 8, 9]`;
 
     // Call Groq API for climate analysis
@@ -124,6 +126,8 @@ Return ONLY a JSON array of job indices (0-based) in order of relevance, like: [
           humidity: weatherData.current.relative_humidity_2m,
           precipitation: weatherData.current.precipitation,
           windSpeed: weatherData.current.wind_speed_10m,
+          soilTemperature: weatherData.current.soil_temperature_0cm,
+          soilMoisture: weatherData.current.soil_moisture_0_to_1cm,
           weeklyPrecipitation: weatherData.daily.precipitation_sum.reduce((a: number, b: number) => a + b, 0),
         },
         jobs: finalJobs,

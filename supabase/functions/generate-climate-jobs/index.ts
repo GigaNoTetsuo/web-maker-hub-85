@@ -21,24 +21,26 @@ serve(async (req) => {
     }
 
     const climateContext = climateData 
-      ? `Current Climate Conditions:
+      ? `Current Climate & Soil Conditions:
 - Temperature: ${climateData.temperature}°C
 - Humidity: ${climateData.humidity}%
 - Wind Speed: ${climateData.windSpeed} km/h
+- Soil Temperature: ${climateData.soilTemperature}°C
+- Soil Moisture: ${climateData.soilMoisture}%
 - Weekly Precipitation: ${climateData.weeklyPrecipitation}mm
 Location: ${location || 'Not specified'}`
       : `Location: ${location || 'General climate action'}`;
 
-    const prompt = `You are a climate action job creator. Generate ${count} realistic micro-jobs (1-6 hours, $30-$150) that address current climate challenges.
+    const prompt = `You are a climate action job creator. Generate ${count} realistic micro-jobs (1-6 hours, $30-$150) that address current climate and soil challenges.
 
 ${climateContext}
 
 Generate jobs that:
-1. Address the specific climate conditions (e.g., drought → water conservation, extreme heat → cooling solutions)
+1. Address the specific climate AND soil conditions (e.g., low soil moisture → irrigation setup, poor soil health → composting, extreme heat + dry soil → mulching)
 2. Are immediately actionable by local community members
 3. Have clear environmental impact
 4. Pay fairly for the time and skill required
-5. Use diverse climate action categories: Renewable Energy, Water Conservation, Waste Reduction, Carbon Sequestration, Urban Greening, Energy Efficiency
+5. Use diverse climate action categories: Renewable Energy, Water Conservation, Waste Reduction, Carbon Sequestration, Urban Greening, Energy Efficiency, Soil Health
 
 Return ONLY a JSON array with this exact structure:
 [

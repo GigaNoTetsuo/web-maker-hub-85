@@ -20,7 +20,6 @@ import {
   Wind,
   Star,
   Sparkles,
-  Plus,
   Leaf,
   BookOpen
 } from "lucide-react";
@@ -35,7 +34,6 @@ const Jobs = () => {
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [userSkills, setUserSkills] = useState<string[]>([]);
-  const [isGeneratingJobs, setIsGeneratingJobs] = useState(false);
   const [userLocation, setUserLocation] = useState<string>("");
 
   type JobWithScores = typeof allJobs[0] & {
@@ -316,6 +314,47 @@ const Jobs = () => {
             title: "Jobs Matched to Your Climate",
             description: `Temperature: ${data.climate.temperature}°C, Showing relevant opportunities`,
           });
+
+          // Automatically generate additional AI jobs after climate matching
+          if (data.climate) {
+            try {
+              const genResponse = await supabase.functions.invoke('generate-climate-jobs', {
+                body: {
+                  climateData: data.climate,
+                  location: userLocation || `${latitude}, ${longitude}`,
+                  count: 3
+                }
+              });
+
+              if (!genResponse.error && genResponse.data?.jobs) {
+                console.log('Auto-generated jobs:', genResponse.data.jobs);
+                
+                const jobsWithIcons = genResponse.data.jobs.map((job: any) => ({
+                  ...job,
+                  icon: getIconComponent(job.icon)
+                }));
+
+                const updatedJobs = [...rankedJobsWithIcons, ...jobsWithIcons];
+                setAllJobsWithScores(updatedJobs);
+                
+                if (filterMode === "recommended" && userId) {
+                  const recommended = updatedJobs.filter(
+                    (job: any) => (job.recommendationScore || 0) >= 50 || job.aiGenerated
+                  );
+                  setJobs(recommended.length > 0 ? recommended : updatedJobs);
+                } else {
+                  setJobs(updatedJobs);
+                }
+
+                toast({
+                  title: "Climate Jobs Generated",
+                  description: `Added ${genResponse.data.jobs.length} AI-generated jobs based on local conditions`,
+                });
+              }
+            } catch (genError) {
+              console.error('Error auto-generating jobs:', genError);
+            }
+          }
         } catch (error) {
           console.error('Error matching jobs:', error);
           toast({
@@ -336,58 +375,6 @@ const Jobs = () => {
         });
       }
     );
-  };
-
-  const generateNewJobs = async () => {
-    if (isGeneratingJobs) return;
-    
-    setIsGeneratingJobs(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-climate-jobs', {
-        body: {
-          climateData,
-          location: userLocation,
-          count: 3
-        }
-      });
-
-      if (error) throw error;
-
-      console.log('AI Generated jobs:', data.jobs);
-      
-      // Map icon strings to components
-      const jobsWithIcons = data.jobs.map((job: any) => ({
-        ...job,
-        icon: getIconComponent(job.icon)
-      }));
-
-      // Add to existing jobs
-      const updatedJobs = [...allJobsWithScores, ...jobsWithIcons];
-      setAllJobsWithScores(updatedJobs);
-      
-      if (filterMode === "recommended") {
-        const recommended = updatedJobs.filter(
-          (job: any) => (job.recommendationScore || 0) >= 50 || job.aiGenerated
-        );
-        setJobs(recommended.length > 0 ? recommended : updatedJobs);
-      } else {
-        setJobs(updatedJobs);
-      }
-
-      toast({
-        title: "New Climate Jobs Generated!",
-        description: `Added ${data.jobs.length} AI-generated jobs based on local conditions`,
-      });
-    } catch (error) {
-      console.error('Error generating jobs:', error);
-      toast({
-        title: "Generation Failed",
-        description: "Could not generate new jobs. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGeneratingJobs(false);
-    }
   };
 
   return (
@@ -493,25 +480,6 @@ const Jobs = () => {
                 <span>Personalizing jobs...</span>
               </div>
             )}
-
-            <Button
-              onClick={generateNewJobs}
-              disabled={isGeneratingJobs}
-              className="gap-2"
-              variant="outline"
-            >
-              {isGeneratingJobs ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4" />
-                  Generate Climate Jobs
-                </>
-              )}
-            </Button>
           </div>
         </div>
 
