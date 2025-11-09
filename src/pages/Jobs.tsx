@@ -21,7 +21,8 @@ import {
   Star,
   Sparkles,
   Leaf,
-  BookOpen
+  BookOpen,
+  Plus
 } from "lucide-react";
 
 const Jobs = () => {
@@ -383,54 +384,60 @@ const Jobs = () => {
       
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
-            Climate Micro-Jobs
-          </h1>
-          <p className="text-muted-foreground">
-            AI-matched opportunities based on your local climate conditions
-          </p>
-          
-          {isLoadingLocation && (
-            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Analyzing your local climate conditions...</span>
-            </div>
-          )}
-          
-          {climateData && locationGranted && (
-            <Card className="mt-6 p-4 max-w-2xl mx-auto bg-primary/5">
-              <div className="flex items-center justify-center gap-6 text-sm">
-                <div className="flex items-center gap-2">
-                  <Sun className="h-4 w-4 text-orange-500" />
-                  <span>{climateData.temperature}°C</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Droplets className="h-4 w-4 text-blue-500" />
-                  <span>{climateData.humidity}% Humidity</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Wind className="h-4 w-4 text-gray-500" />
-                  <span>{climateData.windSpeed} km/h</span>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                Jobs ranked by relevance to your local climate conditions
-              </p>
-            </Card>
-          )}
-          
-          {!locationGranted && !isLoadingLocation && (
-            <Button 
-              onClick={getLocationAndMatchJobs}
-              className="mt-4 mx-auto block"
-              variant="outline"
-            >
-              <MapPin className="h-4 w-4 mr-2" />
-              Enable Location for Climate-Matched Jobs
-            </Button>
-          )}
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
+              Climate Micro-Jobs
+            </h1>
+            <p className="text-muted-foreground">
+              AI-matched opportunities based on your local climate conditions
+            </p>
+          </div>
+          <Button onClick={() => navigate("/jobs/post")} className="gap-2 shrink-0">
+            <Plus className="h-4 w-4" />
+            Post Micro Job
+          </Button>
         </div>
+          
+        {isLoadingLocation && (
+          <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Analyzing your local climate conditions...</span>
+          </div>
+        )}
+        
+        {climateData && locationGranted && (
+          <Card className="mt-6 p-4 max-w-2xl mx-auto bg-primary/5">
+            <div className="flex items-center justify-center gap-6 text-sm">
+              <div className="flex items-center gap-2">
+                <Sun className="h-4 w-4 text-orange-500" />
+                <span>{climateData.temperature}°C</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Droplets className="h-4 w-4 text-blue-500" />
+                <span>{climateData.humidity}% Humidity</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Wind className="h-4 w-4 text-gray-500" />
+                <span>{climateData.windSpeed} km/h</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              Jobs ranked by relevance to your local climate conditions
+            </p>
+          </Card>
+        )}
+        
+        {!locationGranted && !isLoadingLocation && (
+          <Button 
+            onClick={getLocationAndMatchJobs}
+            className="mt-4 mx-auto block"
+            variant="outline"
+          >
+            <MapPin className="h-4 w-4 mr-2" />
+            Enable Location for Climate-Matched Jobs
+          </Button>
+        )}
 
         {/* Filter Tabs */}
         <div className="mb-8 flex items-center justify-between flex-wrap gap-4">

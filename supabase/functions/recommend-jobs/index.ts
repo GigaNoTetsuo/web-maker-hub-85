@@ -58,10 +58,10 @@ serve(async (req) => {
       );
     }
 
-    // Use AI to rank jobs based on user skills
-    const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY');
-    if (!GROQ_API_KEY) {
-      throw new Error('GROQ_API_KEY not configured');
+    // Use Lovable AI to rank jobs based on user skills
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY not configured');
     }
 
     const prompt = `You are a job matching expert. Match these jobs with user skills and rank them.
@@ -87,14 +87,14 @@ Return ONLY a JSON array of objects with this exact format:
 
 Score from 0-100. Sort by score descending.`;
 
-    const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'google/gemini-2.5-flash',
         messages: [
           {
             role: 'system',
@@ -109,14 +109,14 @@ Score from 0-100. Sort by score descending.`;
       }),
     });
 
-    if (!groqResponse.ok) {
-      const errorText = await groqResponse.text();
-      console.error('Groq API error:', errorText);
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error('AI API error:', errorText);
       throw new Error('Failed to analyze job matches');
     }
 
-    const groqData = await groqResponse.json();
-    const analysisText = groqData.choices[0].message.content.trim();
+    const aiData = await aiResponse.json();
+    const analysisText = aiData.choices[0].message.content.trim();
     console.log('AI Analysis:', analysisText);
 
     // Parse the ranking

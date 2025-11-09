@@ -129,6 +129,57 @@ export type Database = {
         }
         Relationships: []
       }
+      micro_jobs: {
+        Row: {
+          benefit_points: number | null
+          created_at: string | null
+          description: string
+          id: string
+          latitude: number | null
+          location: string
+          longitude: number | null
+          media_type: string | null
+          media_url: string | null
+          status: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+          work_type: string
+        }
+        Insert: {
+          benefit_points?: number | null
+          created_at?: string | null
+          description: string
+          id?: string
+          latitude?: number | null
+          location: string
+          longitude?: number | null
+          media_type?: string | null
+          media_url?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+          work_type: string
+        }
+        Update: {
+          benefit_points?: number | null
+          created_at?: string | null
+          description?: string
+          id?: string
+          latitude?: number | null
+          location?: string
+          longitude?: number | null
+          media_type?: string | null
+          media_url?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+          work_type?: string
+        }
+        Relationships: []
+      }
       module_certificates: {
         Row: {
           certificate_number: string
