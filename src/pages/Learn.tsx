@@ -259,18 +259,19 @@ const Learn = () => {
                         : 'Start Course'}
                   </Button>
                   
-                  {isCompleted && (
+                  {isCompleted ? (
                     <Button
-                      onClick={() => {
-                        navigate(`/learn/${course.id}`);
-                        // Will show test option in CourseDetail when modules are complete
-                      }}
+                      onClick={() => navigate(`/learn/${course.id}/test`)}
                       variant="outline"
                       className="w-full border-primary/30 hover:bg-primary/10"
                     >
                       <Trophy className="w-4 h-4 mr-2" />
                       Take Certification Test
                     </Button>
+                  ) : (
+                    <p className="text-xs text-center text-muted-foreground mt-2">
+                      Complete all modules to unlock certification test
+                    </p>
                   )}
                 </div>
               </Card>

@@ -203,12 +203,17 @@ const Dashboard = () => {
                   </Button>
                 </Link>
                 
-                <Link to="/learn">
-                  <Button className="w-full justify-start" variant="outline">
-                    <Trophy className="w-4 h-4 mr-2" />
-                    Take Certification Test
-                  </Button>
-                </Link>
+                <Button
+                  onClick={() => {
+                    // Find first completed course and redirect to test
+                    navigate("/learn");
+                  }}
+                  className="w-full justify-start"
+                  variant="outline"
+                >
+                  <Trophy className="w-4 h-4 mr-2" />
+                  Take Certification Test
+                </Button>
                 
                 <Link to="/jobs">
                   <Button className="w-full justify-start" variant="outline">
