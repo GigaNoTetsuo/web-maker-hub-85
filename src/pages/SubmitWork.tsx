@@ -73,56 +73,47 @@ const SubmitWork = () => {
     // Precompute numeric-only token for robust matching
     const tokenDigits = verificationToken.replace(/\D/g, "");
 
-    // Use lightweight OCR models optimized for browser
-    const modelCandidates = [
-      "onnx-community/trocr-small-handwritten",
-      "onnx-community/trocr-small-printed",
-    ];
+    // Use the original first model requested
+    const model = "Xenova/trocr-large-handwritten";
 
     // Create image URL from file once
     const imageUrl = URL.createObjectURL(file);
 
     try {
-      for (const model of modelCandidates) {
+      try {
+        // Prefer WebGPU when available
+        let detector: any;
         try {
-          toast.info(`Testing with ${model.split('/')[1]}...`);
-          
-          // Use WASM as fallback if WebGPU not available
-          const detector = await pipeline("image-to-text", model, { 
-            dtype: "fp32",
-            device: "wasm"
-          });
-          
-          const result: any = await detector(imageUrl);
-          const text = (Array.isArray(result) ? result[0]?.generated_text : result?.generated_text) || "";
-
-          // Record detection
-          setDetectionDetails((prev) => [...prev, { model, text }]);
-
-          // Normalize to digits only for comparison
-          const cleanDetected = text.replace(/\D/g, "");
-          
-          console.log(`Model ${model} detected: "${text}" (digits: ${cleanDetected})`);
-          
-          if (cleanDetected.includes(tokenDigits) && tokenDigits.length > 0) {
-            matched = true;
-            setDetectedText(text);
-            setIsVerified(true);
-            toast.success(`Token verified! Detected: "${text}"`);
-            break; // stop trying others once matched
-          }
-
-          // Keep best attempt for display even if not matched yet
-          if (!detectedText) setDetectedText(text);
-        } catch (innerErr) {
-          console.warn(`OCR failed for ${model}:`, innerErr);
-          setDetectionDetails((prev) => [...prev, { model, text: `<error: ${innerErr instanceof Error ? innerErr.message : 'unknown'}>` }]);
+          detector = await pipeline("image-to-text", model as any, { device: "webgpu" as any });
+        } catch (_) {
+          // Fallback to WASM if WebGPU fails/unavailable
+          detector = await pipeline("image-to-text", model as any, { device: "wasm" as any, dtype: "fp32" as any });
         }
+
+        const result: any = await detector(imageUrl);
+        const text = (Array.isArray(result) ? result[0]?.generated_text : result?.generated_text) || "";
+
+        // Record detection
+        setDetectionDetails((prev) => [...prev, { model, text }]);
+
+        // Normalize to digits only for comparison
+        const cleanDetected = text.replace(/\D/g, "");
+        if (cleanDetected.includes(tokenDigits) && tokenDigits.length > 0) {
+          matched = true;
+          setDetectedText(text);
+          setIsVerified(true);
+          toast.success(`Verified with ${model}. Detected: "${text}"`);
+        } else {
+          setDetectedText(text);
+        }
+      } catch (innerErr) {
+        console.warn(`OCR failed for ${model}:`, innerErr);
+        setDetectionDetails((prev) => [...prev, { model, text: "<model error>" }]);
       }
 
       if (!matched) {
         setIsVerified(false);
-        toast.error(`Token not found. Expected: ${verificationToken}. Try writing larger and clearer.`);
+        toast.error(`Token not found in OCR output. Expected: ${verificationToken}`);
       }
     } catch (error) {
       console.error("Verification error:", error);
