@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +27,7 @@ import {
 
 const Jobs = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [climateData, setClimateData] = useState<any>(null);
   const [locationGranted, setLocationGranted] = useState(false);
@@ -669,7 +671,18 @@ const Jobs = () => {
                 </div>
 
                 {/* Action */}
-                <Button className="w-full bg-primary text-primary-foreground hover:bg-primary-dark">
+                <Button 
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary-dark"
+                  onClick={() => {
+                    const params = new URLSearchParams({
+                      title: job.title,
+                      company: job.company,
+                      location: job.location,
+                      pay: job.pay,
+                    });
+                    navigate(`/jobs/apply/${job.id}?${params.toString()}`);
+                  }}
+                >
                   Apply for Job
                 </Button>
               </Card>

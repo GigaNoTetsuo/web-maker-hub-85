@@ -9,6 +9,7 @@ import Learn from "./pages/Learn";
 import CourseDetail from "./pages/CourseDetail";
 import CourseTestPage from "./pages/CourseTest";
 import Jobs from "./pages/Jobs";
+import JobApplication from "./pages/JobApplication";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import ContentGenerator from "./pages/ContentGenerator";
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/learn/:courseId" element={<CourseDetail />} />
           <Route path="/learn/:courseId/test" element={<CourseTestPage />} />
           <Route path="/jobs" element={<Jobs />} />
+          <Route path="/jobs/apply/:jobId" element={<JobApplication />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/content-generator" element={<ContentGenerator />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
