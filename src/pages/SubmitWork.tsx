@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,7 +10,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Upload, MapPin } from "lucide-react";
+import { Loader2, Upload, MapPin, CheckCircle2, XCircle, Shield } from "lucide-react";
+import { pipeline } from "@huggingface/transformers";
 
 const formSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters"),
@@ -37,6 +38,9 @@ const SubmitWork = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [verificationToken, setVerificationToken] = useState<string>("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -50,11 +54,62 @@ const SubmitWork = () => {
     },
   });
 
-  const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Generate verification token on component mount
+  useEffect(() => {
+    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    setVerificationToken(token);
+  }, []);
+
+  const verifyImageToken = async (file: File) => {
+    setIsVerifying(true);
+    setIsVerified(false);
+
+    try {
+      // Load OCR model
+      const detector = await pipeline("image-to-text", "Xenova/trocr-small-printed");
+
+      // Create image URL from file
+      const imageUrl = URL.createObjectURL(file);
+
+      // Run OCR
+      const result: any = await detector(imageUrl);
+      const detectedText = (Array.isArray(result) ? result[0]?.generated_text : result?.generated_text) || "";
+      
+      console.log("Detected text:", detectedText);
+      console.log("Expected token:", verificationToken);
+
+      // Check if token is in detected text
+      const tokenFound = detectedText.includes(verificationToken);
+      
+      if (tokenFound) {
+        setIsVerified(true);
+        toast.success("Image verified! Token detected successfully.");
+      } else {
+        setIsVerified(false);
+        toast.error(`Verification failed. Please ensure token ${verificationToken} is visible in the image.`);
+      }
+
+      URL.revokeObjectURL(imageUrl);
+    } catch (error) {
+      console.error("Verification error:", error);
+      toast.error("Verification failed. Please try again with a clearer image.");
+      setIsVerified(false);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleMediaChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
         toast.error("File size must be less than 10MB");
+        return;
+      }
+
+      // Only accept images for verification
+      if (!file.type.startsWith('image')) {
+        toast.error("Please upload an image with the verification token visible");
         return;
       }
       
@@ -64,6 +119,9 @@ const SubmitWork = () => {
         setMediaPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
+
+      // Verify token in image
+      await verifyImageToken(file);
     }
   };
 
@@ -85,6 +143,16 @@ const SubmitWork = () => {
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (!mediaFile) {
+      toast.error("Please upload a photo with the verification token");
+      return;
+    }
+
+    if (!isVerified) {
+      toast.error("Please upload an image with the verification token visible");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -154,6 +222,26 @@ const SubmitWork = () => {
           <p className="text-muted-foreground">
             Log your completed climate action work with proof and earn benefit points!
           </p>
+        </div>
+
+        <div className="bg-card rounded-lg shadow-lg p-6 mb-6">
+          <div className="flex items-start gap-4 p-4 bg-primary/10 border-2 border-primary rounded-lg">
+            <Shield className="h-8 w-8 text-primary flex-shrink-0 mt-1" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-lg mb-2">Verification Token Required</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                To verify your work is genuine, write this token on paper and include it in your photo:
+              </p>
+              <div className="bg-background p-4 rounded-lg border-2 border-primary inline-block">
+                <p className="text-4xl font-bold text-primary font-mono tracking-wider">
+                  {verificationToken}
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                Example: Write "{verificationToken}" on paper, take a photo showing both the token and your work.
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="bg-card rounded-lg shadow-lg p-6">
@@ -241,23 +329,39 @@ const SubmitWork = () => {
               />
 
               <div>
-                <FormLabel>Upload Proof (Photo or Video) *</FormLabel>
-                <p className="text-xs text-muted-foreground mb-2">Required to verify your work and earn points</p>
+                <FormLabel>Upload Proof Photo with Token *</FormLabel>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Image must show the verification token and your completed work
+                </p>
                 <div className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center">
                   <input
                     type="file"
                     id="media-upload"
-                    accept="image/*,video/*"
+                    accept="image/*"
                     onChange={handleMediaChange}
                     className="hidden"
                   />
                   <label htmlFor="media-upload" className="cursor-pointer">
                     {mediaPreview ? (
                       <div className="space-y-2">
-                        {mediaFile?.type.startsWith('video') ? (
-                          <video src={mediaPreview} className="max-h-64 mx-auto rounded" controls />
-                        ) : (
-                          <img src={mediaPreview} alt="Preview" className="max-h-64 mx-auto rounded" />
+                        <img src={mediaPreview} alt="Preview" className="max-h-64 mx-auto rounded" />
+                        {isVerifying && (
+                          <div className="flex items-center justify-center gap-2 text-primary">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-sm">Verifying token...</span>
+                          </div>
+                        )}
+                        {!isVerifying && isVerified && (
+                          <div className="flex items-center justify-center gap-2 text-green-600">
+                            <CheckCircle2 className="h-5 w-5" />
+                            <span className="text-sm font-medium">Token verified!</span>
+                          </div>
+                        )}
+                        {!isVerifying && !isVerified && mediaFile && (
+                          <div className="flex items-center justify-center gap-2 text-destructive">
+                            <XCircle className="h-5 w-5" />
+                            <span className="text-sm font-medium">Token not detected - please upload a clearer image</span>
+                          </div>
                         )}
                         <p className="text-sm text-muted-foreground">Click to change</p>
                       </div>
@@ -265,8 +369,8 @@ const SubmitWork = () => {
                       <div className="space-y-2">
                         <Upload className="h-12 w-12 mx-auto text-muted-foreground" />
                         <div>
-                          <p className="text-sm font-medium">Click to upload</p>
-                          <p className="text-xs text-muted-foreground">Image or video (max 10MB)</p>
+                          <p className="text-sm font-medium">Click to upload image with token</p>
+                          <p className="text-xs text-muted-foreground">Photo must include verification token (max 10MB)</p>
                         </div>
                       </div>
                     )}
@@ -283,7 +387,11 @@ const SubmitWork = () => {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isSubmitting} className="flex-1">
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting || !isVerified || isVerifying} 
+                  className="flex-1"
+                >
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
