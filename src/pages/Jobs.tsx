@@ -18,7 +18,10 @@ import {
   Loader2,
   Wind,
   Star,
-  Sparkles
+  Sparkles,
+  Plus,
+  Leaf,
+  BookOpen
 } from "lucide-react";
 
 const Jobs = () => {
@@ -30,10 +33,13 @@ const Jobs = () => {
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [userSkills, setUserSkills] = useState<string[]>([]);
+  const [isGeneratingJobs, setIsGeneratingJobs] = useState(false);
+  const [userLocation, setUserLocation] = useState<string>("");
 
   type JobWithScores = typeof allJobs[0] & {
     recommendationScore?: number;
     matchedSkills?: string[];
+    aiGenerated?: boolean;
   };
 
   const allJobs = [
@@ -223,6 +229,18 @@ const Jobs = () => {
     }
   };
 
+  const getIconComponent = (iconName: string) => {
+    const icons: Record<string, any> = {
+      TreeDeciduous,
+      Sun,
+      Droplets,
+      Zap,
+      Leaf,
+      BookOpen
+    };
+    return icons[iconName] || Leaf;
+  };
+
   const getLocationAndMatchJobs = async () => {
     if (!navigator.geolocation) {
       toast({
@@ -240,6 +258,18 @@ const Jobs = () => {
         const { latitude, longitude } = position.coords;
         console.log('Location obtained:', latitude, longitude);
         setLocationGranted(true);
+
+        // Get location name using reverse geocoding
+        try {
+          const geoResponse = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+          );
+          const geoData = await geoResponse.json();
+          const locationName = `${geoData.address.city || geoData.address.town || geoData.address.village}, ${geoData.address.country}`;
+          setUserLocation(locationName);
+        } catch (error) {
+          console.error('Error getting location name:', error);
+        }
 
         try {
           // Send jobs without icon property (can't serialize React components)
@@ -306,6 +336,58 @@ const Jobs = () => {
     );
   };
 
+  const generateNewJobs = async () => {
+    if (isGeneratingJobs) return;
+    
+    setIsGeneratingJobs(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-climate-jobs', {
+        body: {
+          climateData,
+          location: userLocation,
+          count: 3
+        }
+      });
+
+      if (error) throw error;
+
+      console.log('AI Generated jobs:', data.jobs);
+      
+      // Map icon strings to components
+      const jobsWithIcons = data.jobs.map((job: any) => ({
+        ...job,
+        icon: getIconComponent(job.icon)
+      }));
+
+      // Add to existing jobs
+      const updatedJobs = [...allJobsWithScores, ...jobsWithIcons];
+      setAllJobsWithScores(updatedJobs);
+      
+      if (filterMode === "recommended") {
+        const recommended = updatedJobs.filter(
+          (job: any) => (job.recommendationScore || 0) >= 50 || job.aiGenerated
+        );
+        setJobs(recommended.length > 0 ? recommended : updatedJobs);
+      } else {
+        setJobs(updatedJobs);
+      }
+
+      toast({
+        title: "New Climate Jobs Generated!",
+        description: `Added ${data.jobs.length} AI-generated jobs based on local conditions`,
+      });
+    } catch (error) {
+      console.error('Error generating jobs:', error);
+      toast({
+        title: "Generation Failed",
+        description: "Could not generate new jobs. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingJobs(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -362,7 +444,7 @@ const Jobs = () => {
         </div>
 
         {/* Filter Tabs */}
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
           <Tabs value={filterMode} onValueChange={(v) => setFilterMode(v as "recommended" | "all")}>
             <TabsList>
               <TabsTrigger value="recommended" className="gap-2">
@@ -370,7 +452,7 @@ const Jobs = () => {
                 Recommended For You
                 {userId && userSkills.length > 0 && (
                   <Badge variant="secondary" className="ml-1">
-                    {allJobsWithScores.filter((j: any) => (j.recommendationScore || 0) >= 50).length}
+                    {allJobsWithScores.filter((j: any) => (j.recommendationScore || 0) >= 50 || j.aiGenerated).length}
                   </Badge>
                 )}
               </TabsTrigger>
@@ -383,31 +465,52 @@ const Jobs = () => {
             </TabsList>
           </Tabs>
 
-          {userId && userSkills.length > 0 && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Star className="h-4 w-4 text-yellow-500" />
-              <span>Your skills: {userSkills.slice(0, 3).join(', ')}{userSkills.length > 3 ? '...' : ''}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {userId && userSkills.length > 0 && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Star className="h-4 w-4 text-yellow-500" />
+                <span>Your skills: {userSkills.slice(0, 3).join(', ')}{userSkills.length > 3 ? '...' : ''}</span>
+              </div>
+            )}
 
-          {userId && userSkills.length === 0 && (
-            <div className="text-sm text-muted-foreground">
-              Add skills to your profile to see personalized recommendations
-            </div>
-          )}
+            {userId && userSkills.length === 0 && (
+              <div className="text-sm text-muted-foreground">
+                Add skills to your profile to see personalized recommendations
+              </div>
+            )}
 
-          {!userId && (
-            <div className="text-sm text-muted-foreground">
-              Sign in to get personalized job recommendations
-            </div>
-          )}
+            {!userId && (
+              <div className="text-sm text-muted-foreground">
+                Sign in to get personalized job recommendations
+              </div>
+            )}
 
-          {isLoadingRecommendations && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Personalizing jobs...</span>
-            </div>
-          )}
+            {isLoadingRecommendations && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Personalizing jobs...</span>
+              </div>
+            )}
+
+            <Button
+              onClick={generateNewJobs}
+              disabled={isGeneratingJobs}
+              className="gap-2"
+              variant="outline"
+            >
+              {isGeneratingJobs ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" />
+                  Generate Climate Jobs
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Stats Banner */}
@@ -484,6 +587,12 @@ const Jobs = () => {
                         {job.urgent && (
                           <Badge variant="destructive" className="text-xs">
                             Urgent
+                          </Badge>
+                        )}
+                        {job.aiGenerated && (
+                          <Badge variant="secondary" className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/20">
+                            <Sparkles className="h-3 w-3 mr-1" />
+                            AI Generated
                           </Badge>
                         )}
                       </div>
