@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import ReactMarkdown from "react-markdown";
 import {
   ChevronLeft,
   ChevronRight,
@@ -26,6 +27,8 @@ import {
   Zap,
   Target,
   Flame,
+  Loader2,
+  Sparkles,
 } from "lucide-react";
 
 const CourseDetail = () => {
@@ -40,6 +43,8 @@ const CourseDetail = () => {
   const [moduleCertificates, setModuleCertificates] = useState<any[]>([]);
   const [currentModuleCertificate, setCurrentModuleCertificate] = useState<any>(null);
   const [earnedXP, setEarnedXP] = useState(0);
+  const [generatingContent, setGeneratingContent] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState<string>("");
 
   useEffect(() => {
     checkAuth();
@@ -48,6 +53,11 @@ const CourseDetail = () => {
       loadModuleCertificates();
     }
   }, [courseId]);
+
+  useEffect(() => {
+    // Reset generated content when module changes
+    setGeneratedContent("");
+  }, [currentModule]);
 
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -1382,49 +1392,221 @@ NOT from toilets (blackwater)
                 </p>
               </div>
 
-              <Tabs defaultValue={currentModuleData.type} className="w-full">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="video" disabled={currentModuleData.type !== "video"}>
-                    <Video className="w-4 h-4 mr-2" />
-                    Video
-                  </TabsTrigger>
-                  <TabsTrigger value="text" disabled={currentModuleData.type !== "text"}>
-                    <FileText className="w-4 h-4 mr-2" />
-                    Content
-                  </TabsTrigger>
-                </TabsList>
+              {/* Conditionally show tabs or direct content */}
+              {currentModuleData.videoUrl && currentModuleData.content ? (
+                <Tabs defaultValue={currentModuleData.type || "video"} className="w-full">
+                  <TabsList className="mb-4">
+                    {currentModuleData.videoUrl && (
+                      <TabsTrigger value="video">
+                        <Video className="w-4 h-4 mr-2" />
+                        Video
+                      </TabsTrigger>
+                    )}
+                    {currentModuleData.content && (
+                      <TabsTrigger value="text">
+                        <FileText className="w-4 h-4 mr-2" />
+                        Content
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
 
-                <TabsContent value="video" className="mt-0">
-                  {currentModuleData.type === "video" && (
-                    <div className="space-y-4">
-                      <div className="aspect-video bg-muted rounded-lg overflow-hidden border border-border">
-                        <iframe
-                          className="w-full h-full"
-                          src={currentModuleData.videoUrl}
-                          title={currentModuleData.title}
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        />
-                      </div>
-                      <Card className="p-4 bg-muted/50 border-border">
-                        <p className="text-sm text-foreground">{currentModuleData.content}</p>
-                      </Card>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="text" className="mt-0">
-                  {currentModuleData.type === "text" && (
-                    <Card className="p-6 bg-muted/50 border-border">
-                      <div className="prose prose-sm max-w-none dark:prose-invert">
-                        <div className="text-foreground whitespace-pre-wrap">
-                          {currentModuleData.content}
+                  <TabsContent value="video" className="mt-0">
+                    {currentModuleData.videoUrl && (
+                      <div className="space-y-4">
+                        <div className="aspect-video bg-muted rounded-lg overflow-hidden border border-border">
+                          <iframe
+                            className="w-full h-full"
+                            src={currentModuleData.videoUrl}
+                            title={currentModuleData.title}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
                         </div>
                       </div>
-                    </Card>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="text" className="mt-0">
+                    {currentModuleData.content && (
+                      <Card className="p-6 bg-muted/50 border-border">
+                        <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground">
+                          <ReactMarkdown>{generatedContent || currentModuleData.content}</ReactMarkdown>
+                        </div>
+                        {!generatedContent && (
+                          <div className="mt-4 pt-4 border-t border-border">
+                            <Button
+                              onClick={async () => {
+                                setGeneratingContent(true);
+                                try {
+                                  const { data, error } = await supabase.functions.invoke('generate-course-content', {
+                                    body: {
+                                      topic: currentModuleData.title,
+                                      contentType: 'module',
+                                      detailLevel: 'comprehensive'
+                                    }
+                                  });
+
+                                  if (error) throw error;
+                                  if (data?.content) {
+                                    setGeneratedContent(data.content);
+                                    toast({
+                                      title: "Content Generated!",
+                                      description: "AI has generated enhanced content for this module.",
+                                    });
+                                  }
+                                } catch (error) {
+                                  console.error('Error generating content:', error);
+                                  toast({
+                                    title: "Generation Failed",
+                                    description: "Failed to generate AI content. Please try again.",
+                                    variant: "destructive",
+                                  });
+                                } finally {
+                                  setGeneratingContent(false);
+                                }
+                              }}
+                              disabled={generatingContent}
+                              variant="outline"
+                              className="border-primary text-primary hover:bg-primary/10"
+                            >
+                              {generatingContent ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Generating AI Content...
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="w-4 h-4 mr-2" />
+                                  Generate Enhanced Content with AI
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                      </Card>
+                    )}
+                  </TabsContent>
+                </Tabs>
+              ) : currentModuleData.videoUrl ? (
+                <div className="space-y-4">
+                  <div className="aspect-video bg-muted rounded-lg overflow-hidden border border-border">
+                    <iframe
+                      className="w-full h-full"
+                      src={currentModuleData.videoUrl}
+                      title={currentModuleData.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
+              ) : currentModuleData.content ? (
+                <Card className="p-6 bg-muted/50 border-border">
+                  <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground">
+                    <ReactMarkdown>{generatedContent || currentModuleData.content}</ReactMarkdown>
+                  </div>
+                  {!generatedContent && (
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <Button
+                        onClick={async () => {
+                          setGeneratingContent(true);
+                          try {
+                            const { data, error } = await supabase.functions.invoke('generate-course-content', {
+                              body: {
+                                topic: currentModuleData.title,
+                                contentType: 'module',
+                                detailLevel: 'comprehensive'
+                              }
+                            });
+
+                            if (error) throw error;
+                            if (data?.content) {
+                              setGeneratedContent(data.content);
+                              toast({
+                                title: "Content Generated!",
+                                description: "AI has generated enhanced content for this module.",
+                              });
+                            }
+                          } catch (error) {
+                            console.error('Error generating content:', error);
+                            toast({
+                              title: "Generation Failed",
+                              description: "Failed to generate AI content. Please try again.",
+                              variant: "destructive",
+                            });
+                          } finally {
+                            setGeneratingContent(false);
+                          }
+                        }}
+                        disabled={generatingContent}
+                        variant="outline"
+                        className="border-primary text-primary hover:bg-primary/10"
+                      >
+                        {generatingContent ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Generating AI Content...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Generate Enhanced Content with AI
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   )}
-                </TabsContent>
-              </Tabs>
+                </Card>
+              ) : (
+                <Card className="p-6 bg-muted/50 border-border text-center">
+                  <p className="text-muted-foreground mb-4">No content available for this module yet.</p>
+                  <Button
+                    onClick={async () => {
+                      setGeneratingContent(true);
+                      try {
+                        const { data, error } = await supabase.functions.invoke('generate-course-content', {
+                          body: {
+                            topic: currentModuleData.title,
+                            contentType: 'module',
+                            detailLevel: 'comprehensive'
+                          }
+                        });
+
+                        if (error) throw error;
+                        if (data?.content) {
+                          setGeneratedContent(data.content);
+                          toast({
+                            title: "Content Generated!",
+                            description: "AI has generated content for this module.",
+                          });
+                        }
+                      } catch (error) {
+                        console.error('Error generating content:', error);
+                        toast({
+                          title: "Generation Failed",
+                          description: "Failed to generate AI content. Please try again.",
+                          variant: "destructive",
+                        });
+                      } finally {
+                        setGeneratingContent(false);
+                      }
+                    }}
+                    disabled={generatingContent}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    {generatingContent ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Generating Content...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Generate Content with AI
+                      </>
+                    )}
+                  </Button>
+                </Card>
+              )}
 
               {/* Navigation Buttons */}
               <div className="flex items-center justify-between mt-6 pt-6 border-t border-border">
