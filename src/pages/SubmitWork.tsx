@@ -41,6 +41,7 @@ const SubmitWork = () => {
   const [verificationToken, setVerificationToken] = useState<string>("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
+  const [detectedText, setDetectedText] = useState<string>("");
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -63,6 +64,7 @@ const SubmitWork = () => {
   const verifyImageToken = async (file: File) => {
     setIsVerifying(true);
     setIsVerified(false);
+    setDetectedText("");
 
     try {
       // Use larger handwritten model for better accuracy
@@ -77,6 +79,9 @@ const SubmitWork = () => {
       
       console.log("Detected text:", detectedText);
       console.log("Expected token:", verificationToken);
+
+      // Store detected text for display
+      setDetectedText(detectedText);
 
       // Check if token is in detected text (remove spaces and check)
       const cleanDetected = detectedText.replace(/\s+/g, '');
@@ -364,6 +369,13 @@ const SubmitWork = () => {
                           <div className="flex items-center justify-center gap-2 text-destructive">
                             <XCircle className="h-5 w-5" />
                             <span className="text-sm font-medium">Token not detected - please upload a clearer image</span>
+                          </div>
+                        )}
+                        {!isVerifying && detectedText && (
+                          <div className="p-3 bg-secondary/50 rounded-lg border border-border">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Model Detected:</p>
+                            <p className="text-sm font-mono text-foreground">{detectedText || "No text detected"}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Expected: {verificationToken}</p>
                           </div>
                         )}
                         <p className="text-sm text-muted-foreground">Click to change</p>
