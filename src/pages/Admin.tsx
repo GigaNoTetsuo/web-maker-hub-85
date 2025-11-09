@@ -4,12 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { LogOut, BookOpen, Briefcase, FileText, CheckCircle } from "lucide-react";
+import { LogOut, BookOpen, Briefcase } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AdminCourses from "@/components/admin/AdminCourses";
-import AdminJobs from "@/components/admin/AdminJobs";
-import AdminApplications from "@/components/admin/AdminApplications";
-import AdminWorkVerification from "@/components/admin/AdminWorkVerification";
+import AdminJobsManagement from "@/components/admin/AdminJobsManagement";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -90,7 +88,7 @@ const Admin = () => {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="courses" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="courses">
               <BookOpen className="mr-2 h-4 w-4" />
               Courses
@@ -99,14 +97,6 @@ const Admin = () => {
               <Briefcase className="mr-2 h-4 w-4" />
               Jobs
             </TabsTrigger>
-            <TabsTrigger value="applications">
-              <FileText className="mr-2 h-4 w-4" />
-              Applications
-            </TabsTrigger>
-            <TabsTrigger value="verification">
-              <CheckCircle className="mr-2 h-4 w-4" />
-              Work Verification
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="courses">
@@ -114,15 +104,7 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="jobs">
-            <AdminJobs />
-          </TabsContent>
-
-          <TabsContent value="applications">
-            <AdminApplications />
-          </TabsContent>
-
-          <TabsContent value="verification">
-            <AdminWorkVerification />
+            <AdminJobsManagement />
           </TabsContent>
         </Tabs>
       </main>
