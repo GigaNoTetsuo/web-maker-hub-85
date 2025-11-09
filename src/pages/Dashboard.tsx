@@ -22,6 +22,13 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    coursesCompleted: 0,
+    coursesInProgress: 0,
+    jobsCompleted: 0,
+    totalEarned: 0,
+    impactScore: 0,
+  });
 
   useEffect(() => {
     checkAuth();
@@ -48,7 +55,55 @@ const Dashboard = () => {
     }
 
     setUser(user);
+    await fetchUserStats(user.id);
     setLoading(false);
+  };
+
+  const fetchUserStats = async (userId: string) => {
+    try {
+      // Fetch completed courses (certificates)
+      const { data: certificates } = await supabase
+        .from("certificates")
+        .select("id")
+        .eq("user_id", userId);
+
+      // Fetch courses in progress
+      const { data: progress } = await supabase
+        .from("course_progress")
+        .select("progress_percentage")
+        .eq("user_id", userId)
+        .lt("progress_percentage", 100);
+
+      // Fetch completed jobs (approved and payment sent)
+      const { data: completedJobs } = await supabase
+        .from("micro_jobs")
+        .select("payment_amount")
+        .eq("user_id", userId)
+        .eq("status", "approved")
+        .eq("payment_sent", true);
+
+      // Fetch user profile for points (impact score)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("points")
+        .eq("id", userId)
+        .single();
+
+      // Calculate total earned
+      const totalEarned = completedJobs?.reduce((sum, job) => {
+        return sum + (Number(job.payment_amount) || 0);
+      }, 0) || 0;
+
+      setStats({
+        coursesCompleted: certificates?.length || 0,
+        coursesInProgress: progress?.length || 0,
+        jobsCompleted: completedJobs?.length || 0,
+        totalEarned: totalEarned,
+        impactScore: profile?.points || 0,
+      });
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+    }
   };
 
   if (loading) {
@@ -91,30 +146,24 @@ const Dashboard = () => {
           <StatCard
             icon={BookOpen}
             label="Courses Completed"
-            value={8}
-            subtitle="3 in progress"
-            trend="↑ 2 this month"
+            value={stats.coursesCompleted}
+            subtitle={`${stats.coursesInProgress} in progress`}
           />
           <StatCard
             icon={Briefcase}
             label="Jobs Completed"
-            value={24}
-            subtitle="12 available"
-            trend="↑ 4 this week"
+            value={stats.jobsCompleted}
           />
           <StatCard
             icon={DollarSign}
             label="Total Earned"
-            value="$1,240"
-            subtitle="This month: $320"
-            trend="↑ 15% vs last month"
+            value={`Rs ${stats.totalEarned.toFixed(0)}`}
           />
           <StatCard
             icon={Award}
             label="Impact Score"
-            value={847}
-            subtitle="Top 10% users"
-            trend="↑ 45 points"
+            value={stats.impactScore}
+            subtitle="Points earned"
           />
         </div>
 

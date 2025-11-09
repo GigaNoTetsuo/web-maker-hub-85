@@ -36,6 +36,10 @@ const Jobs = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [userSkills, setUserSkills] = useState<string[]>([]);
   const [userLocation, setUserLocation] = useState<string>("");
+  const [jobStats, setJobStats] = useState({
+    completed: 0,
+    totalEarned: 0,
+  });
 
   type JobWithScores = typeof allJobs[0] & {
     recommendationScore?: number;
@@ -146,12 +150,36 @@ const Jobs = () => {
       if (user) {
         setUserId(user.id);
         await fetchUserSkills(user.id);
+        await fetchJobStats(user.id);
       }
     };
     
     checkUser();
     getLocationAndMatchJobs();
   }, []);
+
+  const fetchJobStats = async (uid: string) => {
+    try {
+      // Fetch completed and paid jobs
+      const { data: completedJobs } = await supabase
+        .from("micro_jobs")
+        .select("payment_amount")
+        .eq("user_id", uid)
+        .eq("status", "approved")
+        .eq("payment_sent", true);
+
+      const totalEarned = completedJobs?.reduce((sum, job) => {
+        return sum + (Number(job.payment_amount) || 0);
+      }, 0) || 0;
+
+      setJobStats({
+        completed: completedJobs?.length || 0,
+        totalEarned: totalEarned,
+      });
+    } catch (error) {
+      console.error("Error fetching job stats:", error);
+    }
+  };
 
   useEffect(() => {
     // Apply filter when mode changes
@@ -498,7 +526,7 @@ const Jobs = () => {
                 <TrendingUp className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="text-xl font-bold text-foreground">24</p>
+                <p className="text-xl font-bold text-foreground">{jobs.length}</p>
                 <p className="text-xs text-muted-foreground">Available Jobs</p>
               </div>
             </div>
@@ -510,8 +538,8 @@ const Jobs = () => {
                 <DollarSign className="w-5 h-5 text-secondary" />
               </div>
               <div>
-                <p className="text-xl font-bold text-foreground">$65</p>
-                <p className="text-xs text-muted-foreground">Avg. Payout</p>
+                <p className="text-xl font-bold text-foreground">Rs {jobStats.totalEarned.toFixed(0)}</p>
+                <p className="text-xs text-muted-foreground">Total Earned</p>
               </div>
             </div>
           </Card>
@@ -522,8 +550,8 @@ const Jobs = () => {
                 <MapPin className="w-5 h-5 text-accent" />
               </div>
               <div>
-                <p className="text-xl font-bold text-foreground">12</p>
-                <p className="text-xs text-muted-foreground">Near You</p>
+                <p className="text-xl font-bold text-foreground">{jobStats.completed}</p>
+                <p className="text-xs text-muted-foreground">Completed</p>
               </div>
             </div>
           </Card>
@@ -534,8 +562,8 @@ const Jobs = () => {
                 <Clock className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="text-xl font-bold text-foreground">8</p>
-                <p className="text-xs text-muted-foreground">This Week</p>
+                <p className="text-xl font-bold text-foreground">{filterMode === "recommended" ? jobs.filter((j: any) => (j.recommendationScore || 0) >= 50 || j.aiGenerated).length : jobs.length}</p>
+                <p className="text-xs text-muted-foreground">For You</p>
               </div>
             </div>
           </Card>

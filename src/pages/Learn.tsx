@@ -23,6 +23,11 @@ const Learn = () => {
   const [user, setUser] = useState<any>(null);
   const [userProgress, setUserProgress] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    coursesCompleted: 0,
+    totalLearningTime: 0,
+    certificatesEarned: 0,
+  });
 
   useEffect(() => {
     checkAuth();
@@ -47,7 +52,42 @@ const Learn = () => {
     if (data) {
       setUserProgress(data);
     }
+
+    // Fetch real stats
+    await fetchUserStats(userId);
     setLoading(false);
+  };
+
+  const fetchUserStats = async (userId: string) => {
+    try {
+      // Fetch certificates (both course and module)
+      const { data: courseCerts } = await supabase
+        .from("certificates")
+        .select("id")
+        .eq("user_id", userId);
+
+      const { data: moduleCerts } = await supabase
+        .from("module_certificates")
+        .select("id")
+        .eq("user_id", userId);
+
+      // Calculate total learning time based on completed courses
+      const completedCourses = courses.filter(course => 
+        getUserCourseProgress(course.id) === 100
+      );
+      const totalHours = completedCourses.reduce((sum, course) => {
+        const hours = parseInt(course.duration.split(" ")[0]);
+        return sum + hours;
+      }, 0);
+
+      setStats({
+        coursesCompleted: courseCerts?.length || 0,
+        totalLearningTime: totalHours,
+        certificatesEarned: (courseCerts?.length || 0) + (moduleCerts?.length || 0),
+      });
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+    }
   };
 
   if (loading) {
@@ -163,7 +203,7 @@ const Learn = () => {
                 <BookOpen className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">8</p>
+                <p className="text-2xl font-bold text-foreground">{stats.coursesCompleted}</p>
                 <p className="text-sm text-muted-foreground">Courses Completed</p>
               </div>
             </div>
@@ -175,7 +215,7 @@ const Learn = () => {
                 <Clock className="w-6 h-6 text-secondary" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">42h</p>
+                <p className="text-2xl font-bold text-foreground">{stats.totalLearningTime}h</p>
                 <p className="text-sm text-muted-foreground">Learning Time</p>
               </div>
             </div>
@@ -184,12 +224,10 @@ const Learn = () => {
           <Card className="p-4 bg-gradient-card border-border">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center">
-                <Badge className="w-6 h-6 bg-accent text-accent-foreground flex items-center justify-center text-xs">
-                  12
-                </Badge>
+                <Trophy className="w-6 h-6 text-accent" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">12</p>
+                <p className="text-2xl font-bold text-foreground">{stats.certificatesEarned}</p>
                 <p className="text-sm text-muted-foreground">Certificates Earned</p>
               </div>
             </div>
