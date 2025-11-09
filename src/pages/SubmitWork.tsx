@@ -73,12 +73,10 @@ const SubmitWork = () => {
     // Precompute numeric-only token for robust matching
     const tokenDigits = verificationToken.replace(/\D/g, "");
 
-    // Try multiple models to improve robustness (handwritten first)
+    // Use lightweight OCR models optimized for browser
     const modelCandidates = [
-      "Xenova/trocr-large-handwritten",
-      "Xenova/trocr-base-handwritten",
-      "Xenova/trocr-large-printed",
-      "Xenova/trocr-base-printed",
+      "onnx-community/trocr-small-handwritten",
+      "onnx-community/trocr-small-printed",
     ];
 
     // Create image URL from file once
@@ -87,7 +85,14 @@ const SubmitWork = () => {
     try {
       for (const model of modelCandidates) {
         try {
-          const detector = await pipeline("image-to-text", model as any, { device: "webgpu" as any });
+          toast.info(`Testing with ${model.split('/')[1]}...`);
+          
+          // Use WASM as fallback if WebGPU not available
+          const detector = await pipeline("image-to-text", model, { 
+            dtype: "fp32",
+            device: "wasm"
+          });
+          
           const result: any = await detector(imageUrl);
           const text = (Array.isArray(result) ? result[0]?.generated_text : result?.generated_text) || "";
 
@@ -96,11 +101,14 @@ const SubmitWork = () => {
 
           // Normalize to digits only for comparison
           const cleanDetected = text.replace(/\D/g, "");
+          
+          console.log(`Model ${model} detected: "${text}" (digits: ${cleanDetected})`);
+          
           if (cleanDetected.includes(tokenDigits) && tokenDigits.length > 0) {
             matched = true;
             setDetectedText(text);
             setIsVerified(true);
-            toast.success(`Verified with ${model}. Detected: "${text}"`);
+            toast.success(`Token verified! Detected: "${text}"`);
             break; // stop trying others once matched
           }
 
@@ -108,13 +116,13 @@ const SubmitWork = () => {
           if (!detectedText) setDetectedText(text);
         } catch (innerErr) {
           console.warn(`OCR failed for ${model}:`, innerErr);
-          setDetectionDetails((prev) => [...prev, { model, text: "<model error>" }]);
+          setDetectionDetails((prev) => [...prev, { model, text: `<error: ${innerErr instanceof Error ? innerErr.message : 'unknown'}>` }]);
         }
       }
 
       if (!matched) {
         setIsVerified(false);
-        toast.error(`Token not found in OCR output. Expected: ${verificationToken}`);
+        toast.error(`Token not found. Expected: ${verificationToken}. Try writing larger and clearer.`);
       }
     } catch (error) {
       console.error("Verification error:", error);
