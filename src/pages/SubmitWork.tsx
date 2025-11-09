@@ -65,8 +65,8 @@ const SubmitWork = () => {
     setIsVerified(false);
 
     try {
-      // Load OCR model that supports both printed and handwritten text
-      const detector = await pipeline("image-to-text", "Xenova/trocr-base-handwritten");
+      // Use larger handwritten model for better accuracy
+      const detector = await pipeline("image-to-text", "Xenova/trocr-large-handwritten");
 
       // Create image URL from file
       const imageUrl = URL.createObjectURL(file);
@@ -78,15 +78,18 @@ const SubmitWork = () => {
       console.log("Detected text:", detectedText);
       console.log("Expected token:", verificationToken);
 
-      // Check if token is in detected text
-      const tokenFound = detectedText.includes(verificationToken);
+      // Check if token is in detected text (remove spaces and check)
+      const cleanDetected = detectedText.replace(/\s+/g, '');
+      const tokenFound = cleanDetected.includes(verificationToken);
       
       if (tokenFound) {
         setIsVerified(true);
-        toast.success("Image verified! Token detected successfully.");
+        toast.success(`Image verified! Detected: "${detectedText}"`);
       } else {
         setIsVerified(false);
-        toast.error(`Verification failed. Please ensure token ${verificationToken} is visible in the image.`);
+        toast.error(`Token not found. Detected: "${detectedText}" | Expected: ${verificationToken}`, {
+          duration: 5000,
+        });
       }
 
       URL.revokeObjectURL(imageUrl);
