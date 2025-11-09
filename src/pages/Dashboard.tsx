@@ -29,6 +29,13 @@ const Dashboard = () => {
     totalEarned: 0,
     impactScore: 0,
   });
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [nextMilestone, setNextMilestone] = useState({
+    name: "",
+    current: 0,
+    target: 0,
+    percentage: 0,
+  });
 
   useEffect(() => {
     checkAuth();
@@ -56,6 +63,7 @@ const Dashboard = () => {
 
     setUser(user);
     await fetchUserStats(user.id);
+    await fetchRecentActivity(user.id);
     setLoading(false);
   };
 
@@ -94,16 +102,105 @@ const Dashboard = () => {
         return sum + (Number(job.payment_amount) || 0);
       }, 0) || 0;
 
+      const completedJobsCount = completedJobs?.length || 0;
+
       setStats({
         coursesCompleted: certificates?.length || 0,
         coursesInProgress: progress?.length || 0,
-        jobsCompleted: completedJobs?.length || 0,
+        jobsCompleted: completedJobsCount,
         totalEarned: totalEarned,
         impactScore: profile?.points || 0,
+      });
+
+      // Calculate next milestone
+      const milestones = [
+        { name: "Green Starter", target: 5 },
+        { name: "Eco Warrior", target: 10 },
+        { name: "Climate Champion", target: 25 },
+        { name: "Sustainability Hero", target: 50 },
+        { name: "Earth Guardian", target: 100 },
+      ];
+
+      const nextGoal = milestones.find(m => m.target > completedJobsCount) || milestones[milestones.length - 1];
+      const percentage = (completedJobsCount / nextGoal.target) * 100;
+
+      setNextMilestone({
+        name: nextGoal.name,
+        current: completedJobsCount,
+        target: nextGoal.target,
+        percentage: Math.min(percentage, 100),
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
     }
+  };
+
+  const fetchRecentActivity = async (userId: string) => {
+    try {
+      const activities: any[] = [];
+
+      // Fetch recent certificates (courses completed)
+      const { data: certificates } = await supabase
+        .from("certificates")
+        .select("course_name, issued_at")
+        .eq("user_id", userId)
+        .order("issued_at", { ascending: false })
+        .limit(3);
+
+      certificates?.forEach(cert => {
+        activities.push({
+          id: `cert-${cert.issued_at}`,
+          type: "course",
+          title: `Completed ${cert.course_name}`,
+          date: getRelativeTime(cert.issued_at),
+          points: 50,
+        });
+      });
+
+      // Fetch recent completed jobs
+      const { data: jobs } = await supabase
+        .from("micro_jobs")
+        .select("title, verified_at, payment_amount, benefit_points")
+        .eq("user_id", userId)
+        .eq("status", "approved")
+        .order("verified_at", { ascending: false })
+        .limit(3);
+
+      jobs?.forEach(job => {
+        activities.push({
+          id: `job-${job.verified_at}`,
+          type: "job",
+          title: job.title,
+          date: getRelativeTime(job.verified_at),
+          earned: `Rs ${Number(job.payment_amount || 0).toFixed(0)}`,
+          points: job.benefit_points,
+        });
+      });
+
+      // Sort by date and take top 4
+      activities.sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      setRecentActivities(activities.slice(0, 4));
+    } catch (error) {
+      console.error("Error fetching recent activity:", error);
+    }
+  };
+
+  const getRelativeTime = (timestamp: string) => {
+    const now = new Date();
+    const past = new Date(timestamp);
+    const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return "just now";
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
+    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 604800)} weeks ago`;
+    return `${Math.floor(diffInSeconds / 2592000)} months ago`;
   };
 
   if (loading) {
@@ -118,13 +215,6 @@ const Dashboard = () => {
   }
 
   const userName = user?.user_metadata?.full_name?.split(" ")[0] || "User";
-  
-  const recentActivities = [
-    { id: 1, type: "course", title: "Completed Solar Panel Maintenance", date: "2 days ago", points: 50 },
-    { id: 2, type: "job", title: "Tree Planting - Central Park", date: "1 week ago", earned: "$45" },
-    { id: 3, type: "course", title: "Started Water Conservation Methods", date: "1 week ago", progress: 60 },
-    { id: 4, type: "job", title: "Energy Audit - Community Center", date: "2 weeks ago", earned: "$80" },
-  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -217,38 +307,44 @@ const Dashboard = () => {
               <h2 className="text-2xl font-bold text-foreground mb-6">Recent Activity</h2>
               
               <div className="space-y-4">
-                {recentActivities.map((activity) => (
-                  <div
-                    key={activity.id}
-                    className="flex items-center justify-between p-4 bg-muted/50 rounded-lg"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        activity.type === 'course' ? 'bg-primary/10' : 'bg-secondary/10'
-                      }`}>
-                        {activity.type === 'course' ? (
-                          <BookOpen className={`w-5 h-5 ${activity.type === 'course' ? 'text-primary' : 'text-secondary'}`} />
-                        ) : (
-                          <Briefcase className={`w-5 h-5 ${activity.type === 'course' ? 'text-primary' : 'text-secondary'}`} />
-                        )}
+                {recentActivities.length > 0 ? (
+                  recentActivities.map((activity) => (
+                    <div
+                      key={activity.id}
+                      className="flex items-center justify-between p-4 bg-muted/50 rounded-lg"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          activity.type === 'course' ? 'bg-primary/10' : 'bg-secondary/10'
+                        }`}>
+                          {activity.type === 'course' ? (
+                            <BookOpen className={`w-5 h-5 ${activity.type === 'course' ? 'text-primary' : 'text-secondary'}`} />
+                          ) : (
+                            <Briefcase className={`w-5 h-5 ${activity.type === 'course' ? 'text-primary' : 'text-secondary'}`} />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">{activity.title}</p>
+                          <p className="text-sm text-muted-foreground">{activity.date}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-foreground">{activity.title}</p>
-                        <p className="text-sm text-muted-foreground">{activity.date}</p>
-                      </div>
+                      {activity.earned && (
+                        <Badge variant="secondary" className="bg-primary/10 text-primary">
+                          {activity.earned}
+                        </Badge>
+                      )}
+                      {activity.points && (
+                        <Badge variant="secondary" className="bg-accent/10 text-accent">
+                          +{activity.points} pts
+                        </Badge>
+                      )}
                     </div>
-                    {activity.earned && (
-                      <Badge variant="secondary" className="bg-primary/10 text-primary">
-                        {activity.earned}
-                      </Badge>
-                    )}
-                    {activity.points && (
-                      <Badge variant="secondary" className="bg-accent/10 text-accent">
-                        +{activity.points} pts
-                      </Badge>
-                    )}
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">
+                    No recent activity. Start learning or complete jobs to see your progress here!
+                  </p>
+                )}
               </div>
             </Card>
           </div>
@@ -307,11 +403,20 @@ const Dashboard = () => {
                 </div>
                 <h3 className="font-bold text-foreground mb-2">Next Milestone</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  5 more jobs to unlock "Climate Champion" badge
+                  {nextMilestone.target - nextMilestone.current > 0 
+                    ? `${nextMilestone.target - nextMilestone.current} more jobs to unlock "${nextMilestone.name}" badge`
+                    : `You've reached "${nextMilestone.name}"! Keep going!`
+                  }
                 </p>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div className="bg-gradient-primary h-2 rounded-full" style={{ width: "80%" }} />
+                <div className="w-full bg-muted rounded-full h-2 mb-2">
+                  <div 
+                    className="bg-gradient-primary h-2 rounded-full transition-all" 
+                    style={{ width: `${nextMilestone.percentage}%` }} 
+                  />
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  {nextMilestone.current} / {nextMilestone.target} jobs completed
+                </p>
               </div>
             </Card>
           </div>
