@@ -84,6 +84,45 @@ export type Database = {
           },
         ]
       }
+      courses: {
+        Row: {
+          course_id: string
+          created_at: string | null
+          description: string
+          difficulty: string
+          duration: string
+          id: string
+          modules: Json
+          skills: Json
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          course_id: string
+          created_at?: string | null
+          description: string
+          difficulty: string
+          duration: string
+          id?: string
+          modules?: Json
+          skills?: Json
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          course_id?: string
+          created_at?: string | null
+          description?: string
+          difficulty?: string
+          duration?: string
+          id?: string
+          modules?: Json
+          skills?: Json
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       job_applications: {
         Row: {
           applicant_email: string
@@ -131,6 +170,7 @@ export type Database = {
       }
       micro_jobs: {
         Row: {
+          admin_notes: string | null
           benefit_points: number | null
           created_at: string | null
           description: string
@@ -140,13 +180,18 @@ export type Database = {
           longitude: number | null
           media_type: string | null
           media_url: string | null
+          payment_amount: number | null
+          payment_sent: boolean | null
           status: string | null
           title: string
           updated_at: string | null
           user_id: string
+          verified_at: string | null
+          verified_by: string | null
           work_type: string
         }
         Insert: {
+          admin_notes?: string | null
           benefit_points?: number | null
           created_at?: string | null
           description: string
@@ -156,13 +201,18 @@ export type Database = {
           longitude?: number | null
           media_type?: string | null
           media_url?: string | null
+          payment_amount?: number | null
+          payment_sent?: boolean | null
           status?: string | null
           title: string
           updated_at?: string | null
           user_id: string
+          verified_at?: string | null
+          verified_by?: string | null
           work_type: string
         }
         Update: {
+          admin_notes?: string | null
           benefit_points?: number | null
           created_at?: string | null
           description?: string
@@ -172,10 +222,14 @@ export type Database = {
           longitude?: number | null
           media_type?: string | null
           media_url?: string | null
+          payment_amount?: number | null
+          payment_sent?: boolean | null
           status?: string | null
           title?: string
           updated_at?: string | null
           user_id?: string
+          verified_at?: string | null
+          verified_by?: string | null
           work_type?: string
         }
         Relationships: []
@@ -381,6 +435,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_skills: {
         Row: {
           course_id: string
@@ -418,10 +493,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -548,6 +629,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const

@@ -14,6 +14,7 @@ import SubmitWork from "./pages/SubmitWork";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import ContentGenerator from "./pages/ContentGenerator";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/jobs/submit" element={<SubmitWork />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/content-generator" element={<ContentGenerator />} />
+          <Route path="/admin" element={<Admin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
