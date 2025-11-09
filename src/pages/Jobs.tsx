@@ -157,7 +157,7 @@ const Jobs = () => {
     // Apply filter when mode changes
     if (filterMode === "recommended") {
       const recommended = allJobsWithScores.filter(
-        (job: any) => (job.recommendationScore || 0) >= 50
+        (job: any) => (job.recommendationScore || 0) >= 50 || job.aiGenerated
       );
       setJobs(recommended.length > 0 ? recommended : allJobsWithScores);
     } else {
