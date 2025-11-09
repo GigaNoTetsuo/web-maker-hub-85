@@ -674,20 +674,29 @@ const Jobs = () => {
                 </div>
 
                 {/* Action */}
-                <Button 
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary-dark"
-                  onClick={() => {
-                    const params = new URLSearchParams({
-                      title: job.title,
-                      company: job.company,
-                      location: job.location,
-                      pay: job.pay,
-                    });
-                    navigate(`/jobs/apply/${job.id}?${params.toString()}`);
-                  }}
-                >
-                  Apply for Job
-                </Button>
+                {job.aiGenerated ? (
+                  <Button 
+                    className="w-full bg-primary text-primary-foreground hover:bg-primary-dark"
+                    onClick={() => navigate("/jobs/submit")}
+                  >
+                    Submit My Work
+                  </Button>
+                ) : (
+                  <Button 
+                    className="w-full bg-primary text-primary-foreground hover:bg-primary-dark"
+                    onClick={() => {
+                      const params = new URLSearchParams({
+                        title: job.title,
+                        company: job.company,
+                        location: job.location,
+                        pay: job.pay,
+                      });
+                      navigate(`/jobs/apply/${job.id}?${params.toString()}`);
+                    }}
+                  >
+                    Apply for Job
+                  </Button>
+                )}
               </Card>
             );
           })}
