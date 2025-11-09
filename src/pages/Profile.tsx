@@ -29,6 +29,7 @@ const Profile = () => {
   const [user, setUser] = useState<any>(null);
   const [skills, setSkills] = useState<any[]>([]);
   const [certificates, setCertificates] = useState<any[]>([]);
+  const [moduleCertificates, setModuleCertificates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -64,6 +65,17 @@ const Profile = () => {
 
     if (certsData) {
       setCertificates(certsData);
+    }
+
+    // Load module certificates
+    const { data: moduleCertsData } = await supabase
+      .from("module_certificates")
+      .select("*")
+      .eq("user_id", userId)
+      .order("issued_at", { ascending: false });
+
+    if (moduleCertsData) {
+      setModuleCertificates(moduleCertsData);
     }
 
     setLoading(false);
@@ -174,14 +186,19 @@ const Profile = () => {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Badge variant="secondary" className="bg-primary/10 text-primary">
-                      <FileText className="w-3 h-3 mr-1" />
-                      {certificates.length} Certificates
-                    </Badge>
-                    <Badge variant="secondary" className="bg-secondary/10 text-secondary">
-                      {skills.length} Skills Earned
-                    </Badge>
-                  </div>
+                  <Badge className="bg-primary text-primary-foreground">
+                    Certified
+                  </Badge>
+                  <Badge className="bg-primary/10 text-primary">
+                    {certificates.length} Certificates
+                  </Badge>
+                  <Badge className="bg-secondary/10 text-secondary">
+                    {skills.length} Skills Earned
+                  </Badge>
+                  <Badge className="bg-accent/10 text-accent">
+                    {moduleCertificates.length} Module Certificates
+                  </Badge>
+                </div>
                 </div>
                 <Button
                   variant="outline"
@@ -284,6 +301,41 @@ const Profile = () => {
                         >
                           View
                         </Button>
+                      </div>
+                    </div>
+                ))}
+                </div>
+              </Card>
+            )}
+
+            {/* Module Certificates */}
+            {moduleCertificates.length > 0 && (
+              <Card className="p-6 bg-card border-border">
+                <h2 className="text-2xl font-bold text-foreground mb-6">
+                  Module Certificates
+                </h2>
+                
+                <div className="grid md:grid-cols-2 gap-3">
+                  {moduleCertificates.map((cert) => (
+                    <div
+                      key={cert.id}
+                      className="p-4 bg-gradient-to-br from-primary/5 to-secondary/5 border border-primary/20 rounded-lg hover:border-primary/40 transition-colors"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Award className="w-5 h-5 text-primary-foreground" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-foreground text-sm mb-1">
+                            {cert.module_name}
+                          </h3>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            {new Date(cert.issued_at).toLocaleDateString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground font-mono">
+                            {cert.certificate_number}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   ))}

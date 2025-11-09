@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
+import ModuleTest from "@/components/ModuleTest";
+import ModuleCertificate from "@/components/ModuleCertificate";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -29,11 +31,15 @@ const CourseDetail = () => {
   const [completedModules, setCompletedModules] = useState<number[]>([]);
   const [user, setUser] = useState<any>(null);
   const [progress, setProgress] = useState(0);
+  const [showModuleTest, setShowModuleTest] = useState(false);
+  const [moduleCertificates, setModuleCertificates] = useState<any[]>([]);
+  const [currentModuleCertificate, setCurrentModuleCertificate] = useState<any>(null);
 
   useEffect(() => {
     checkAuth();
     if (courseId) {
       loadProgress();
+      loadModuleCertificates();
     }
   }, [courseId]);
 
@@ -44,6 +50,29 @@ const CourseDetail = () => {
     } else {
       setUser(user);
     }
+  };
+
+  const loadModuleCertificates = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("module_certificates")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("course_id", courseId);
+
+    if (data) {
+      setModuleCertificates(data);
+    }
+  };
+
+  const hasModuleCertificate = (moduleId: number) => {
+    return moduleCertificates.some((cert) => cert.module_id === moduleId);
+  };
+
+  const getModuleCertificate = (moduleId: number) => {
+    return moduleCertificates.find((cert) => cert.module_id === moduleId);
   };
 
   const loadProgress = async () => {
@@ -1074,20 +1103,41 @@ NOT from toilets (blackwater)
       setCompletedModules(newCompleted);
       saveProgress(newCompleted);
     }
-    if (currentModule < course.modules.length - 1) {
-      setCurrentModule(currentModule + 1);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentModule > 0) {
-      setCurrentModule(currentModule - 1);
+    
+    // Load certificate if it exists for this module
+    const cert = getModuleCertificate(currentModule);
+    if (cert) {
+      setCurrentModuleCertificate(cert);
     }
   };
 
   const handleNext = () => {
+    setShowModuleTest(false);
+    setCurrentModuleCertificate(null);
     if (currentModule < course.modules.length - 1) {
-      setCurrentModule(currentModule + 1);
+      const nextModule = currentModule + 1;
+      setCurrentModule(nextModule);
+      
+      // Check if next module has a certificate
+      const cert = getModuleCertificate(nextModule);
+      if (cert) {
+        setCurrentModuleCertificate(cert);
+      }
+    }
+  };
+
+  const handlePrevious = () => {
+    setShowModuleTest(false);
+    setCurrentModuleCertificate(null);
+    if (currentModule > 0) {
+      const prevModule = currentModule - 1;
+      setCurrentModule(prevModule);
+      
+      // Check if previous module has a certificate
+      const cert = getModuleCertificate(prevModule);
+      if (cert) {
+        setCurrentModuleCertificate(cert);
+      }
     }
   };
 
@@ -1146,7 +1196,15 @@ NOT from toilets (blackwater)
               {course.modules.map((module, index) => (
                 <button
                   key={module.id}
-                  onClick={() => setCurrentModule(index)}
+                  onClick={() => {
+                    setShowModuleTest(false);
+                    setCurrentModuleCertificate(null);
+                    setCurrentModule(index);
+                    const cert = getModuleCertificate(index);
+                    if (cert) {
+                      setCurrentModuleCertificate(cert);
+                    }
+                  }}
                   className={`w-full text-left p-3 rounded-lg transition-colors ${
                     currentModule === index
                       ? "bg-primary/10 border-l-2 border-primary"
@@ -1155,7 +1213,9 @@ NOT from toilets (blackwater)
                 >
                   <div className="flex items-start gap-3">
                     <div className="mt-1">
-                      {completedModules.includes(index) ? (
+                      {hasModuleCertificate(index) ? (
+                        <Trophy className="w-5 h-5 text-primary" />
+                      ) : completedModules.includes(index) ? (
                         <CheckCircle2 className="w-5 h-5 text-primary" />
                       ) : (
                         <Circle className="w-5 h-5 text-muted-foreground" />
@@ -1169,6 +1229,11 @@ NOT from toilets (blackwater)
                           <FileText className="w-4 h-4 text-muted-foreground" />
                         )}
                         <span className="text-xs text-muted-foreground">{module.duration}</span>
+                        {hasModuleCertificate(index) && (
+                          <Badge className="bg-primary/10 text-primary text-xs py-0 px-1">
+                            Certified
+                          </Badge>
+                        )}
                       </div>
                       <p className={`text-sm font-medium ${
                         currentModule === index ? "text-primary" : "text-foreground"
@@ -1289,6 +1354,65 @@ NOT from toilets (blackwater)
                 </Button>
               </div>
             </Card>
+
+            {/* Module Test Section */}
+            {completedModules.includes(currentModule) && !showModuleTest && !currentModuleCertificate && (
+              <Card className="mt-6 p-6 bg-gradient-to-br from-primary/10 to-secondary/10 border-2 border-primary/30">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center flex-shrink-0">
+                    <Trophy className="w-6 h-6 text-primary-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-foreground mb-2">
+                      Test Your Knowledge
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Take a quick test to earn a certificate for this module. You need 80% to pass.
+                    </p>
+                    <Button
+                      onClick={() => setShowModuleTest(true)}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      <Trophy className="w-5 h-5 mr-2" />
+                      Take Module Test
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Module Test Display */}
+            {showModuleTest && (
+              <div className="mt-6">
+                <ModuleTest
+                  courseId={courseId!}
+                  moduleId={currentModule}
+                  moduleName={currentModuleData.title}
+                  onTestComplete={(passed) => {
+                    setShowModuleTest(false);
+                    if (passed) {
+                      loadModuleCertificates();
+                      const cert = getModuleCertificate(currentModule);
+                      setCurrentModuleCertificate(cert);
+                    }
+                  }}
+                  onSkip={() => setShowModuleTest(false)}
+                />
+              </div>
+            )}
+
+            {/* Module Certificate Display */}
+            {currentModuleCertificate && (
+              <div className="mt-6">
+                <ModuleCertificate
+                  moduleName={currentModuleCertificate.module_name}
+                  courseName={course.title}
+                  userName={user?.user_metadata?.full_name || "Student"}
+                  certificateNumber={currentModuleCertificate.certificate_number}
+                  issuedDate={currentModuleCertificate.issued_at}
+                />
+              </div>
+            )}
 
             {/* Certification Test Section */}
             {completedModules.length === course.totalModules && (
