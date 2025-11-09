@@ -1,7 +1,10 @@
+import { useState, useEffect } from "react";
 import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   TreeDeciduous, 
   Sun, 
@@ -10,11 +13,18 @@ import {
   MapPin,
   DollarSign,
   Clock,
-  TrendingUp
+  TrendingUp,
+  Loader2,
+  Wind
 } from "lucide-react";
 
 const Jobs = () => {
-  const jobs = [
+  const { toast } = useToast();
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [climateData, setClimateData] = useState<any>(null);
+  const [locationGranted, setLocationGranted] = useState(false);
+
+  const allJobs = [
     {
       id: 1,
       title: "Tree Planting - Riverside Park",
@@ -107,6 +117,72 @@ const Jobs = () => {
     }
   ];
 
+  const [jobs, setJobs] = useState(allJobs);
+
+  useEffect(() => {
+    // Try to get location on mount
+    getLocationAndMatchJobs();
+  }, []);
+
+  const getLocationAndMatchJobs = async () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: "Location Not Supported",
+        description: "Your browser doesn't support geolocation.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoadingLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        console.log('Location obtained:', latitude, longitude);
+        setLocationGranted(true);
+
+        try {
+          const { data, error } = await supabase.functions.invoke('match-climate-jobs', {
+            body: {
+              latitude,
+              longitude,
+              jobs: allJobs,
+            },
+          });
+
+          if (error) throw error;
+
+          console.log('Climate-matched jobs:', data);
+          setClimateData(data.climate);
+          setJobs(data.jobs);
+
+          toast({
+            title: "Jobs Matched to Your Climate",
+            description: `Temperature: ${data.climate.temperature}°C, Showing relevant opportunities`,
+          });
+        } catch (error) {
+          console.error('Error matching jobs:', error);
+          toast({
+            title: "Error",
+            description: "Failed to match jobs with climate data",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoadingLocation(false);
+        }
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        setIsLoadingLocation(false);
+        toast({
+          title: "Location Access Denied",
+          description: "Showing all available jobs without climate matching",
+        });
+      }
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -118,8 +194,48 @@ const Jobs = () => {
             Climate Micro-Jobs
           </h1>
           <p className="text-muted-foreground">
-            AI-matched opportunities based on your skills and location
+            AI-matched opportunities based on your local climate conditions
           </p>
+          
+          {isLoadingLocation && (
+            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Analyzing your local climate conditions...</span>
+            </div>
+          )}
+          
+          {climateData && locationGranted && (
+            <Card className="mt-6 p-4 max-w-2xl mx-auto bg-primary/5">
+              <div className="flex items-center justify-center gap-6 text-sm">
+                <div className="flex items-center gap-2">
+                  <Sun className="h-4 w-4 text-orange-500" />
+                  <span>{climateData.temperature}°C</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Droplets className="h-4 w-4 text-blue-500" />
+                  <span>{climateData.humidity}% Humidity</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Wind className="h-4 w-4 text-gray-500" />
+                  <span>{climateData.windSpeed} km/h</span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Jobs ranked by relevance to your local climate conditions
+              </p>
+            </Card>
+          )}
+          
+          {!locationGranted && !isLoadingLocation && (
+            <Button 
+              onClick={getLocationAndMatchJobs}
+              className="mt-4 mx-auto block"
+              variant="outline"
+            >
+              <MapPin className="h-4 w-4 mr-2" />
+              Enable Location for Climate-Matched Jobs
+            </Button>
+          )}
         </div>
 
         {/* Stats Banner */}

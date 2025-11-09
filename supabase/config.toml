@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.generate-course-content]
 verify_jwt = false
+
+[functions.match-climate-jobs]
+verify_jwt = false
