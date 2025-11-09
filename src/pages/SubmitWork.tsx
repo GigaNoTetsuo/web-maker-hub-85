@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Upload, MapPin, CheckCircle2, XCircle, Shield } from "lucide-react";
 import { pipeline } from "@huggingface/transformers";
+import Tesseract from "tesseract.js";
 
 const formSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters"),
@@ -62,6 +63,50 @@ const SubmitWork = () => {
     setVerificationToken(token);
   }, []);
 
+  // Preprocess image: grayscale + contrast, resize to 1024px width max
+  const preprocessImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 1024;
+        const scale = Math.min(1, maxW / img.width);
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          URL.revokeObjectURL(url);
+          reject(new Error('Canvas context not available'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        const imageData = ctx.getImageData(0, 0, w, h);
+        const data = imageData.data;
+        const contrast = 1.5; // increase contrast for clearer digits
+        const intercept = 128 * (1 - contrast);
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i], g = data[i + 1], b = data[i + 2];
+          let gray = 0.299 * r + 0.587 * g + 0.114 * b; // luminance
+          gray = gray * contrast + intercept;
+          gray = Math.max(0, Math.min(255, gray));
+          data[i] = data[i + 1] = data[i + 2] = gray;
+        }
+        ctx.putImageData(imageData, 0, 0);
+        const out = canvas.toDataURL('image/png');
+        URL.revokeObjectURL(url);
+        resolve(out);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Failed to load image'));
+      };
+      img.src = url;
+    });
+  };
+
   const verifyImageToken = async (file: File) => {
     setIsVerifying(true);
     setIsVerified(false);
@@ -76,27 +121,21 @@ const SubmitWork = () => {
     // Use the original first model requested
     const model = "Xenova/trocr-large-handwritten";
 
-    // Create image URL from file once
-    const imageUrl = URL.createObjectURL(file);
-
     try {
+      // Preprocess image once
+      const processedUrl = await preprocessImage(file);
+
+      // 1) Try TrOCR first (WebGPU -> WASM fallback)
       try {
-        // Prefer WebGPU when available
         let detector: any;
         try {
           detector = await pipeline("image-to-text", model as any, { device: "webgpu" as any });
         } catch (_) {
-          // Fallback to WASM if WebGPU fails/unavailable
           detector = await pipeline("image-to-text", model as any, { device: "wasm" as any, dtype: "fp32" as any });
         }
-
-        const result: any = await detector(imageUrl);
+        const result: any = await detector(processedUrl);
         const text = (Array.isArray(result) ? result[0]?.generated_text : result?.generated_text) || "";
-
-        // Record detection
         setDetectionDetails((prev) => [...prev, { model, text }]);
-
-        // Normalize to digits only for comparison
         const cleanDetected = text.replace(/\D/g, "");
         if (cleanDetected.includes(tokenDigits) && tokenDigits.length > 0) {
           matched = true;
@@ -106,21 +145,41 @@ const SubmitWork = () => {
         } else {
           setDetectedText(text);
         }
-      } catch (innerErr) {
-        console.warn(`OCR failed for ${model}:`, innerErr);
+      } catch (err) {
+        console.warn(`OCR failed for ${model}:`, err);
         setDetectionDetails((prev) => [...prev, { model, text: "<model error>" }]);
+      }
+
+      // 2) If not matched, fallback to Tesseract.js digits-only
+      if (!matched) {
+        try {
+          const { data } = await Tesseract.recognize(processedUrl, 'eng', {
+            tessedit_char_whitelist: '0123456789',
+          } as any);
+          const text = data?.text || "";
+          setDetectionDetails((prev) => [...prev, { model: 'tesseract.js', text }]);
+          const cleanDetected = text.replace(/\D/g, "");
+          if (cleanDetected.includes(tokenDigits) && tokenDigits.length > 0) {
+            matched = true;
+            setDetectedText(text);
+            setIsVerified(true);
+            toast.success(`Token verified! Detected: "${text}"`);
+          }
+        } catch (tErr) {
+          console.warn('Tesseract failed:', tErr);
+          setDetectionDetails((prev) => [...prev, { model: 'tesseract.js', text: '<model error>' }]);
+        }
       }
 
       if (!matched) {
         setIsVerified(false);
-        toast.error(`Token not found in OCR output. Expected: ${verificationToken}`);
+        toast.error(`Token not found in OCR output. Expected: ${verificationToken}. Try writing larger, darker digits and avoid glare.`);
       }
     } catch (error) {
       console.error("Verification error:", error);
       toast.error("Verification failed. Please try again with a clearer image.");
       setIsVerified(false);
     } finally {
-      URL.revokeObjectURL(imageUrl);
       setIsVerifying(false);
     }
   };
