@@ -42,6 +42,7 @@ const SubmitWork = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [detectedText, setDetectedText] = useState<string>("");
+  const [detectionDetails, setDetectionDetails] = useState<{ model: string; text: string }[]>([]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -65,44 +66,62 @@ const SubmitWork = () => {
     setIsVerifying(true);
     setIsVerified(false);
     setDetectedText("");
+    setDetectionDetails([]);
+
+    let matched = false;
+
+    // Precompute numeric-only token for robust matching
+    const tokenDigits = verificationToken.replace(/\D/g, "");
+
+    // Try multiple models to improve robustness (handwritten first)
+    const modelCandidates = [
+      "Xenova/trocr-large-handwritten",
+      "Xenova/trocr-base-handwritten",
+      "Xenova/trocr-large-printed",
+      "Xenova/trocr-base-printed",
+    ];
+
+    // Create image URL from file once
+    const imageUrl = URL.createObjectURL(file);
 
     try {
-      // Use larger handwritten model for better accuracy
-      const detector = await pipeline("image-to-text", "Xenova/trocr-large-handwritten");
+      for (const model of modelCandidates) {
+        try {
+          const detector = await pipeline("image-to-text", model as any, { device: "webgpu" as any });
+          const result: any = await detector(imageUrl);
+          const text = (Array.isArray(result) ? result[0]?.generated_text : result?.generated_text) || "";
 
-      // Create image URL from file
-      const imageUrl = URL.createObjectURL(file);
+          // Record detection
+          setDetectionDetails((prev) => [...prev, { model, text }]);
 
-      // Run OCR
-      const result: any = await detector(imageUrl);
-      const detectedText = (Array.isArray(result) ? result[0]?.generated_text : result?.generated_text) || "";
-      
-      console.log("Detected text:", detectedText);
-      console.log("Expected token:", verificationToken);
+          // Normalize to digits only for comparison
+          const cleanDetected = text.replace(/\D/g, "");
+          if (cleanDetected.includes(tokenDigits) && tokenDigits.length > 0) {
+            matched = true;
+            setDetectedText(text);
+            setIsVerified(true);
+            toast.success(`Verified with ${model}. Detected: "${text}"`);
+            break; // stop trying others once matched
+          }
 
-      // Store detected text for display
-      setDetectedText(detectedText);
-
-      // Check if token is in detected text (remove spaces and check)
-      const cleanDetected = detectedText.replace(/\s+/g, '');
-      const tokenFound = cleanDetected.includes(verificationToken);
-      
-      if (tokenFound) {
-        setIsVerified(true);
-        toast.success(`Image verified! Detected: "${detectedText}"`);
-      } else {
-        setIsVerified(false);
-        toast.error(`Token not found. Detected: "${detectedText}" | Expected: ${verificationToken}`, {
-          duration: 5000,
-        });
+          // Keep best attempt for display even if not matched yet
+          if (!detectedText) setDetectedText(text);
+        } catch (innerErr) {
+          console.warn(`OCR failed for ${model}:`, innerErr);
+          setDetectionDetails((prev) => [...prev, { model, text: "<model error>" }]);
+        }
       }
 
-      URL.revokeObjectURL(imageUrl);
+      if (!matched) {
+        setIsVerified(false);
+        toast.error(`Token not found in OCR output. Expected: ${verificationToken}`);
+      }
     } catch (error) {
       console.error("Verification error:", error);
       toast.error("Verification failed. Please try again with a clearer image.");
       setIsVerified(false);
     } finally {
+      URL.revokeObjectURL(imageUrl);
       setIsVerifying(false);
     }
   };
@@ -378,6 +397,19 @@ const SubmitWork = () => {
                               {detectedText || "No text detected"}
                             </p>
                             <p className="text-xs text-muted-foreground mt-1">Expected: {verificationToken}</p>
+
+                            {detectionDetails.length > 0 && (
+                              <div className="mt-2">
+                                <p className="text-xs font-medium text-muted-foreground">Tried models:</p>
+                                <ul className="mt-1 space-y-1">
+                                  {detectionDetails.map((d, idx) => (
+                                    <li key={idx} className="text-xs text-muted-foreground">
+                                      <span className="font-medium text-foreground">{d.model}:</span> {d.text || "<no text>"}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
                           </div>
                         )}
                         <p className="text-sm text-muted-foreground">Click to change</p>
