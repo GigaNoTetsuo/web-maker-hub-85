@@ -1,11 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
+import CourseTest from "@/components/CourseTest";
+import Certificate from "@/components/Certificate";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import {
   ChevronLeft,
   ChevronRight,
@@ -16,13 +20,90 @@ import {
   Video,
   FileText,
   Award,
+  Trophy,
 } from "lucide-react";
 
 const CourseDetail = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [currentModule, setCurrentModule] = useState(0);
   const [completedModules, setCompletedModules] = useState<number[]>([]);
+  const [showTest, setShowTest] = useState(false);
+  const [certificate, setCertificate] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    checkAuth();
+    if (courseId) {
+      loadCertificate();
+      loadProgress();
+    }
+  }, [courseId]);
+
+  const checkAuth = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate("/auth");
+    } else {
+      setUser(user);
+    }
+  };
+
+  const loadCertificate = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("certificates")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("course_id", courseId)
+      .maybeSingle();
+
+    if (data) {
+      setCertificate(data);
+    }
+  };
+
+  const loadProgress = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("course_progress")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("course_id", courseId)
+      .maybeSingle();
+
+    if (data) {
+      setCompletedModules(data.completed_modules || []);
+      setProgress(data.progress_percentage || 0);
+    }
+  };
+
+  const saveProgress = async (modules: number[]) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const progressPercentage = (modules.length / course.totalModules) * 100;
+
+    await supabase
+      .from("course_progress")
+      .upsert({
+        user_id: user.id,
+        course_id: courseId!,
+        completed_modules: modules,
+        progress_percentage: progressPercentage,
+        last_accessed: new Date().toISOString(),
+      }, {
+        onConflict: "user_id,course_id"
+      });
+
+    setProgress(progressPercentage);
+  };
 
   // Mock course data - in a real app, this would come from an API
   const courses = {
@@ -175,12 +256,78 @@ If harvesting timber:
     return null;
   }
 
+  if (certificate) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="container mx-auto px-4 py-8">
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/learn")}
+            className="mb-4 text-muted-foreground hover:text-foreground"
+          >
+            <ChevronLeft className="w-4 h-4 mr-2" />
+            Back to Courses
+          </Button>
+          <Certificate
+            courseName={course.title}
+            userName={user?.user_metadata?.full_name || "Student"}
+            certificateNumber={certificate.certificate_number}
+            issuedDate={certificate.issued_at}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (showTest) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="container mx-auto px-4 py-8">
+          <Button
+            variant="ghost"
+            onClick={() => setShowTest(false)}
+            className="mb-4 text-muted-foreground hover:text-foreground"
+          >
+            <ChevronLeft className="w-4 h-4 mr-2" />
+            Back to Course
+          </Button>
+          <h1 className="text-3xl font-bold text-foreground mb-6">
+            {course.title} - Certification Test
+          </h1>
+          <CourseTest
+            courseId={courseId!}
+            courseName={course.title}
+            onTestComplete={(passed) => {
+              if (passed) {
+                loadCertificate();
+                toast({
+                  title: "Congratulations!",
+                  description: "You've earned your certificate!",
+                });
+              } else {
+                setShowTest(false);
+                toast({
+                  title: "Keep learning",
+                  description: "Review the course material and try again.",
+                  variant: "destructive",
+                });
+              }
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
   const currentModuleData = course.modules[currentModule];
-  const progress = (completedModules.length / course.totalModules) * 100;
 
   const handleModuleComplete = () => {
     if (!completedModules.includes(currentModule)) {
-      setCompletedModules([...completedModules, currentModule]);
+      const newCompleted = [...completedModules, currentModule];
+      setCompletedModules(newCompleted);
+      saveProgress(newCompleted);
     }
     if (currentModule < course.modules.length - 1) {
       setCurrentModule(currentModule + 1);
@@ -397,6 +544,33 @@ If harvesting timber:
                 </Button>
               </div>
             </Card>
+
+            {/* Certification Test Section */}
+            {completedModules.length === course.totalModules && (
+              <Card className="mt-6 p-6 bg-gradient-to-br from-primary/10 to-secondary/10 border-2 border-primary/30">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center flex-shrink-0">
+                    <Trophy className="w-6 h-6 text-primary-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-foreground mb-2">
+                      Ready for Certification?
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      You've completed all modules! Take the 30-minute certification test and earn your certificate. You need 80% to pass.
+                    </p>
+                    <Button
+                      onClick={() => setShowTest(true)}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      size="lg"
+                    >
+                      <Trophy className="w-5 h-5 mr-2" />
+                      Take Certification Test
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
           </div>
         </div>
       </div>

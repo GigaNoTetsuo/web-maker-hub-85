@@ -14,7 +14,197 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      certificates: {
+        Row: {
+          certificate_number: string
+          course_id: string
+          course_name: string
+          id: string
+          issued_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          certificate_number: string
+          course_id: string
+          course_name: string
+          id?: string
+          issued_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          certificate_number?: string
+          course_id?: string
+          course_name?: string
+          id?: string
+          issued_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_progress: {
+        Row: {
+          completed_modules: number[] | null
+          course_id: string
+          id: string
+          last_accessed: string | null
+          progress_percentage: number | null
+          user_id: string | null
+        }
+        Insert: {
+          completed_modules?: number[] | null
+          course_id: string
+          id?: string
+          last_accessed?: string | null
+          progress_percentage?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          completed_modules?: number[] | null
+          course_id?: string
+          id?: string
+          last_accessed?: string | null
+          progress_percentage?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      test_attempts: {
+        Row: {
+          completed_at: string | null
+          course_id: string
+          id: string
+          passed: boolean
+          percentage: number
+          score: number
+          total_questions: number
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          course_id: string
+          id?: string
+          passed: boolean
+          percentage: number
+          score: number
+          total_questions: number
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          course_id?: string
+          id?: string
+          passed?: boolean
+          percentage?: number
+          score?: number
+          total_questions?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_questions: {
+        Row: {
+          correct_answer: number
+          course_id: string
+          created_at: string | null
+          id: string
+          options: Json
+          question: string
+        }
+        Insert: {
+          correct_answer: number
+          course_id: string
+          created_at?: string | null
+          id?: string
+          options: Json
+          question: string
+        }
+        Update: {
+          correct_answer?: number
+          course_id?: string
+          created_at?: string | null
+          id?: string
+          options?: Json
+          question?: string
+        }
+        Relationships: []
+      }
+      user_skills: {
+        Row: {
+          course_id: string
+          earned_at: string | null
+          id: string
+          skill_name: string
+          user_id: string | null
+        }
+        Insert: {
+          course_id: string
+          earned_at?: string | null
+          id?: string
+          skill_name: string
+          user_id?: string | null
+        }
+        Update: {
+          course_id?: string
+          earned_at?: string | null
+          id?: string
+          skill_name?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_skills_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

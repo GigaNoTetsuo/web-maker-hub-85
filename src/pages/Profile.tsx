@@ -1,9 +1,13 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Award,
   TreeDeciduous,
@@ -14,16 +18,85 @@ import {
   Phone,
   Edit,
   Star,
-  TrendingUp
+  TrendingUp,
+  LogOut,
+  FileText
 } from "lucide-react";
 
 const Profile = () => {
-  const skills = [
-    { name: "Tree Planting", level: 95, certified: true },
-    { name: "Solar Maintenance", level: 80, certified: true },
-    { name: "Water Conservation", level: 70, certified: false },
-    { name: "Energy Auditing", level: 60, certified: false }
-  ];
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [user, setUser] = useState<any>(null);
+  const [skills, setSkills] = useState<any[]>([]);
+  const [certificates, setCertificates] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate("/auth");
+    } else {
+      setUser(user);
+      loadUserData(user.id);
+    }
+  };
+
+  const loadUserData = async (userId: string) => {
+    // Load skills
+    const { data: skillsData } = await supabase
+      .from("user_skills")
+      .select("*")
+      .eq("user_id", userId);
+
+    if (skillsData) {
+      setSkills(skillsData);
+    }
+
+    // Load certificates
+    const { data: certsData } = await supabase
+      .from("certificates")
+      .select("*")
+      .eq("user_id", userId);
+
+    if (certsData) {
+      setCertificates(certsData);
+    }
+
+    setLoading(false);
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    toast({
+      title: "Signed out",
+      description: "You have been successfully signed out.",
+    });
+    navigate("/auth");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="container mx-auto px-4 py-8">
+          <p className="text-center text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const userName = user?.user_metadata?.full_name || "User";
+  const userEmail = user?.email || "";
+  const initials = userName
+    .split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   const achievements = [
     { 
@@ -86,50 +159,43 @@ const Profile = () => {
           <div className="flex flex-col md:flex-row items-start gap-6">
             <Avatar className="w-24 h-24 border-4 border-primary/20">
               <AvatarFallback className="bg-gradient-primary text-primary-foreground text-2xl font-bold">
-                SC
+                {initials}
               </AvatarFallback>
             </Avatar>
             
             <div className="flex-1">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h1 className="text-3xl font-bold text-foreground mb-2">Sarah Chen</h1>
+                  <h1 className="text-3xl font-bold text-foreground mb-2">{userName}</h1>
                   <div className="flex flex-wrap gap-2 text-sm text-muted-foreground mb-3">
                     <div className="flex items-center gap-1">
-                      <MapPin className="w-4 h-4" />
-                      Brooklyn, NY
-                    </div>
-                    <div className="flex items-center gap-1">
                       <Mail className="w-4 h-4" />
-                      sarah.chen@email.com
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Phone className="w-4 h-4" />
-                      +1 (555) 123-4567
+                      {userEmail}
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="secondary" className="bg-primary/10 text-primary">
-                      <Star className="w-3 h-3 mr-1" />
-                      4.9 Rating
+                      <FileText className="w-3 h-3 mr-1" />
+                      {certificates.length} Certificates
                     </Badge>
                     <Badge variant="secondary" className="bg-secondary/10 text-secondary">
-                      Top 10% Performer
-                    </Badge>
-                    <Badge variant="secondary" className="bg-accent/10 text-accent">
-                      24 Jobs Completed
+                      {skills.length} Skills Earned
                     </Badge>
                   </div>
                 </div>
-                <Button variant="outline" size="sm">
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit Profile
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSignOut}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
                 </Button>
               </div>
               
               <p className="text-muted-foreground">
-                Passionate about environmental conservation and renewable energy. 
-                Experienced in tree planting, solar panel maintenance, and community education.
+                Learning and contributing to climate action through GreenPath.
               </p>
             </div>
           </div>
@@ -139,27 +205,91 @@ const Profile = () => {
           {/* Skills Section */}
           <div className="lg:col-span-2 space-y-8">
             <Card className="p-6 bg-card border-border">
-              <h2 className="text-2xl font-bold text-foreground mb-6">Skills & Certifications</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-6">
+                Earned Skills & Certifications
+              </h2>
               
-              <div className="space-y-6">
-                {skills.map((skill) => (
-                  <div key={skill.name}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-foreground">{skill.name}</span>
-                        {skill.certified && (
-                          <Badge variant="secondary" className="bg-primary/10 text-primary text-xs">
-                            Certified
-                          </Badge>
-                        )}
+              {skills.length === 0 ? (
+                <div className="text-center py-8">
+                  <Award className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                  <p className="text-muted-foreground mb-4">
+                    No skills earned yet. Complete courses to earn certifications!
+                  </p>
+                  <Button onClick={() => navigate("/learn")}>
+                    Browse Courses
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {skills.map((skill) => (
+                    <div
+                      key={skill.id}
+                      className="p-4 bg-gradient-hero border border-primary/20 rounded-lg"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center">
+                            <Award className="w-5 h-5 text-primary-foreground" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-foreground">
+                              {skill.skill_name}
+                            </h3>
+                            <p className="text-xs text-muted-foreground">
+                              Earned on {new Date(skill.earned_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge className="bg-primary text-primary-foreground">
+                          Certified
+                        </Badge>
                       </div>
-                      <span className="text-sm text-muted-foreground">{skill.level}%</span>
                     </div>
-                    <Progress value={skill.level} className="h-2" />
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </Card>
+
+            {/* Certificates */}
+            {certificates.length > 0 && (
+              <Card className="p-6 bg-card border-border">
+                <h2 className="text-2xl font-bold text-foreground mb-6">
+                  My Certificates
+                </h2>
+                
+                <div className="space-y-3">
+                  {certificates.map((cert) => (
+                    <div
+                      key={cert.id}
+                      className="p-4 bg-muted/50 border border-border rounded-lg hover:border-primary/30 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                            <FileText className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-foreground">
+                              {cert.course_name}
+                            </h3>
+                            <p className="text-xs text-muted-foreground font-mono">
+                              {cert.certificate_number}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/learn/${cert.course_id}`)}
+                        >
+                          View
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
 
             {/* Achievements */}
             <Card className="p-6 bg-card border-border">

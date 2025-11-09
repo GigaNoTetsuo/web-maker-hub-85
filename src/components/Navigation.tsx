@@ -1,9 +1,28 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Leaf, Home, BookOpen, Briefcase, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 
 const Navigation = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [user, setUser] = useState<any>(null);
+  
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
   
   const navItems = [
     { to: "/", icon: Home, label: "Home" },
@@ -45,6 +64,16 @@ const Navigation = () => {
                 </Link>
               );
             })}
+            
+            {!user && (
+              <Button
+                onClick={() => navigate("/auth")}
+                className="ml-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                size="sm"
+              >
+                Login
+              </Button>
+            )}
           </div>
         </div>
       </div>
