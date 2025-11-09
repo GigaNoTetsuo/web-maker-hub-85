@@ -25,7 +25,7 @@ const AdminWorkVerification = () => {
       .from("micro_jobs")
       .select(`
         *,
-        profiles (full_name, avatar_url)
+        profiles!micro_jobs_user_id_fkey (full_name, avatar_url)
       `)
       .eq("status", "approved")
       .order("created_at", { ascending: false });
@@ -46,6 +46,22 @@ const AdminWorkVerification = () => {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) return;
+
+    // Get the job to get user_id and benefit_points
+    const { data: job, error: jobError } = await supabase
+      .from("micro_jobs")
+      .select("user_id, benefit_points")
+      .eq("id", jobId)
+      .single();
+
+    if (jobError || !job) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch job details",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const updateData: any = {
       verified_by: user.id,
@@ -73,10 +89,26 @@ const AdminWorkVerification = () => {
       return;
     }
 
+    // Add points to user profile if verified
+    if (verified && job.benefit_points) {
+      const { error: pointsError } = await supabase.rpc("increment_user_points", {
+        p_user_id: job.user_id,
+        p_points: job.benefit_points,
+      });
+
+      if (pointsError) {
+        toast({
+          title: "Warning",
+          description: "Work verified but failed to update points",
+          variant: "destructive",
+        });
+      }
+    }
+
     toast({
       title: "Success",
       description: verified 
-        ? "Work verified and payment processed" 
+        ? "Work verified, payment processed, and points added" 
         : "Work rejected",
     });
 

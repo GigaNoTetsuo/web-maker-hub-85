@@ -30,7 +30,7 @@ const AdminJobsManagement = () => {
       .from("micro_jobs")
       .select(`
         *,
-        profiles (full_name)
+        profiles!micro_jobs_user_id_fkey (full_name)
       `)
       .order("created_at", { ascending: false });
 
@@ -51,7 +51,7 @@ const AdminJobsManagement = () => {
       .from("job_applications")
       .select(`
         *,
-        profiles (full_name)
+        profiles!job_applications_user_id_fkey (full_name)
       `)
       .order("created_at", { ascending: false });
 
