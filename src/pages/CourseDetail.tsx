@@ -21,6 +21,11 @@ import {
   FileText,
   Award,
   Trophy,
+  Lock,
+  Star,
+  Zap,
+  Target,
+  Flame,
 } from "lucide-react";
 
 const CourseDetail = () => {
@@ -34,6 +39,7 @@ const CourseDetail = () => {
   const [showModuleTest, setShowModuleTest] = useState(false);
   const [moduleCertificates, setModuleCertificates] = useState<any[]>([]);
   const [currentModuleCertificate, setCurrentModuleCertificate] = useState<any>(null);
+  const [earnedXP, setEarnedXP] = useState(0);
 
   useEffect(() => {
     checkAuth();
@@ -1097,11 +1103,34 @@ NOT from toilets (blackwater)
 
   const currentModuleData = course.modules[currentModule];
 
+  const getModuleXP = (moduleId: number) => {
+    return hasModuleCertificate(moduleId) ? 150 : completedModules.includes(moduleId) ? 100 : 0;
+  };
+
+  const getTotalXP = () => {
+    return course.modules.reduce((total, _, index) => total + getModuleXP(index), 0);
+  };
+
+  const isModuleLocked = (moduleId: number) => {
+    // First module is always unlocked
+    if (moduleId === 0) return false;
+    // Module is unlocked if previous module is completed
+    return !completedModules.includes(moduleId - 1);
+  };
+
   const handleModuleComplete = () => {
     if (!completedModules.includes(currentModule)) {
       const newCompleted = [...completedModules, currentModule];
       setCompletedModules(newCompleted);
       saveProgress(newCompleted);
+      
+      // Award XP with animation
+      setEarnedXP(getTotalXP() + 100);
+      
+      toast({
+        title: "🎉 Module Completed!",
+        description: `+100 XP earned! Keep going!`,
+      });
     }
     
     // Load certificate if it exists for this module
@@ -1169,83 +1198,167 @@ NOT from toilets (blackwater)
             </Badge>
           </div>
 
-          {/* Progress Bar */}
-          <Card className="p-4 bg-gradient-card border-border">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Award className="w-5 h-5 text-primary" />
-                <span className="font-semibold text-foreground">Course Progress</span>
+          {/* Progress Bar & XP System */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <Card className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Target className="w-5 h-5 text-primary" />
+                  <span className="font-semibold text-foreground">Course Progress</span>
+                </div>
+                <span className="text-sm font-medium text-primary">{Math.round(progress)}%</span>
               </div>
-              <span className="text-sm font-medium text-primary">{Math.round(progress)}%</span>
-            </div>
-            <Progress value={progress} className="h-2" />
-            <p className="text-sm text-muted-foreground mt-2">
-              {completedModules.length} of {course.totalModules} modules completed
-            </p>
-          </Card>
+              <Progress value={progress} className="h-2 mb-2" />
+              <p className="text-sm text-muted-foreground">
+                {completedModules.length} of {course.totalModules} modules completed
+              </p>
+            </Card>
+            
+            <Card className="p-4 bg-gradient-to-br from-secondary/10 to-secondary/5 border-secondary/20">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-secondary" />
+                  <span className="font-semibold text-foreground">Total XP Earned</span>
+                </div>
+                <Flame className="w-5 h-5 text-orange-500" />
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold text-secondary">{getTotalXP()}</span>
+                <span className="text-sm text-muted-foreground">XP</span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                {course.totalModules - completedModules.length} modules remaining
+              </p>
+            </Card>
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-4 gap-6">
-          {/* Sidebar - Module List */}
-          <Card className="lg:col-span-1 p-4 h-fit bg-card border-border">
-            <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-              <BookOpen className="w-5 h-5" />
-              Course Modules
-            </h3>
-            <div className="space-y-2">
-              {course.modules.map((module, index) => (
-                <button
-                  key={module.id}
-                  onClick={() => {
-                    setShowModuleTest(false);
-                    setCurrentModuleCertificate(null);
-                    setCurrentModule(index);
-                    const cert = getModuleCertificate(index);
-                    if (cert) {
-                      setCurrentModuleCertificate(cert);
-                    }
-                  }}
-                  className={`w-full text-left p-3 rounded-lg transition-colors ${
-                    currentModule === index
-                      ? "bg-primary/10 border-l-2 border-primary"
-                      : "hover:bg-muted"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="mt-1">
-                      {hasModuleCertificate(index) ? (
-                        <Trophy className="w-5 h-5 text-primary" />
-                      ) : completedModules.includes(index) ? (
-                        <CheckCircle2 className="w-5 h-5 text-primary" />
-                      ) : (
-                        <Circle className="w-5 h-5 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        {module.type === "video" ? (
-                          <Video className="w-4 h-4 text-muted-foreground" />
+          {/* Sidebar - Gamified Module Cards */}
+          <div className="lg:col-span-1 space-y-3">
+            <Card className="p-4 bg-gradient-to-br from-primary/5 to-secondary/5 border-border">
+              <h3 className="font-semibold text-foreground mb-1 flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-primary" />
+                Learning Path
+              </h3>
+              <p className="text-xs text-muted-foreground">Complete modules to unlock rewards</p>
+            </Card>
+            
+            <div className="space-y-3">
+              {course.modules.map((module, index) => {
+                const isLocked = isModuleLocked(index);
+                const isCompleted = completedModules.includes(index);
+                const hasCertificate = hasModuleCertificate(index);
+                const isCurrent = currentModule === index;
+                const xpValue = getModuleXP(index);
+                
+                return (
+                  <button
+                    key={module.id}
+                    onClick={() => {
+                      if (!isLocked) {
+                        setShowModuleTest(false);
+                        setCurrentModuleCertificate(null);
+                        setCurrentModule(index);
+                        const cert = getModuleCertificate(index);
+                        if (cert) {
+                          setCurrentModuleCertificate(cert);
+                        }
+                      }
+                    }}
+                    disabled={isLocked}
+                    className={`w-full text-left p-4 rounded-xl transition-all duration-300 group relative overflow-hidden
+                      ${isLocked ? 'opacity-50 cursor-not-allowed bg-muted/50 border border-border' : 
+                        isCurrent ? 'bg-gradient-to-br from-primary/20 to-secondary/10 border-2 border-primary shadow-lg scale-[1.02]' :
+                        hasCertificate ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-2 border-yellow-500/30 hover:scale-[1.02] hover:shadow-md' :
+                        isCompleted ? 'bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-2 border-green-500/30 hover:scale-[1.02] hover:shadow-md' :
+                        'bg-card border border-border hover:border-primary/50 hover:scale-[1.02] hover:shadow-md'
+                      }`}
+                  >
+                    {/* Animated background gradient for active card */}
+                    {isCurrent && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 animate-pulse" />
+                    )}
+                    
+                    <div className="relative flex items-start gap-3">
+                      {/* Icon & Status */}
+                      <div className={`mt-1 p-2 rounded-lg flex-shrink-0 ${
+                        isLocked ? 'bg-muted' :
+                        hasCertificate ? 'bg-gradient-to-br from-yellow-500 to-orange-500' :
+                        isCompleted ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
+                        isCurrent ? 'bg-gradient-to-br from-primary to-secondary' :
+                        'bg-muted'
+                      }`}>
+                        {isLocked ? (
+                          <Lock className="w-4 h-4 text-muted-foreground" />
+                        ) : hasCertificate ? (
+                          <Trophy className="w-4 h-4 text-white" />
+                        ) : isCompleted ? (
+                          <CheckCircle2 className="w-4 h-4 text-white" />
+                        ) : isCurrent ? (
+                          <Play className="w-4 h-4 text-white" />
                         ) : (
-                          <FileText className="w-4 h-4 text-muted-foreground" />
-                        )}
-                        <span className="text-xs text-muted-foreground">{module.duration}</span>
-                        {hasModuleCertificate(index) && (
-                          <Badge className="bg-primary/10 text-primary text-xs py-0 px-1">
-                            Certified
-                          </Badge>
+                          <Circle className="w-4 h-4 text-muted-foreground" />
                         )}
                       </div>
-                      <p className={`text-sm font-medium ${
-                        currentModule === index ? "text-primary" : "text-foreground"
-                      }`}>
-                        {index + 1}. {module.title}
-                      </p>
+                      
+                      <div className="flex-1 min-w-0">
+                        {/* Module number & badges */}
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                            #{index + 1}
+                          </Badge>
+                          {module.type === "video" ? (
+                            <Video className="w-3.5 h-3.5 text-primary" />
+                          ) : (
+                            <FileText className="w-3.5 h-3.5 text-primary" />
+                          )}
+                          <span className="text-xs text-muted-foreground">{module.duration}</span>
+                          {hasCertificate && (
+                            <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs py-0 px-1.5 border-0">
+                              <Star className="w-3 h-3 mr-1" />
+                              Certified
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        {/* Module title */}
+                        <p className={`text-sm font-semibold mb-1 ${
+                          isLocked ? 'text-muted-foreground' :
+                          isCurrent ? 'text-primary' : 'text-foreground'
+                        }`}>
+                          {module.title}
+                        </p>
+                        
+                        {/* XP Display */}
+                        {!isLocked && (
+                          <div className="flex items-center gap-2 mt-2">
+                            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                              xpValue > 0 ? 'bg-secondary/20 text-secondary' : 'bg-muted text-muted-foreground'
+                            }`}>
+                              <Zap className="w-3 h-3" />
+                              {xpValue > 0 ? `+${xpValue}` : '100'} XP
+                            </div>
+                            {isCompleted && (
+                              <Badge variant="outline" className="text-xs py-0 px-1.5 bg-green-500/10 text-green-600 border-green-500/20">
+                                ✓ Done
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                        
+                        {isLocked && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            🔒 Complete previous module to unlock
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
-          </Card>
+          </div>
 
           {/* Main Content Area */}
           <div className="lg:col-span-3">
