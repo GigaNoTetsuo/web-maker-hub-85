@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,8 @@ import {
 } from "lucide-react";
 
 const Learn = () => {
+  const navigate = useNavigate();
+  
   const courses = [
     {
       id: 1,
@@ -183,6 +186,7 @@ const Learn = () => {
                 )}
 
                 <Button 
+                  onClick={() => navigate(`/learn/${course.id}`)}
                   className={`w-full ${
                     course.completed 
                       ? 'bg-primary/10 text-primary hover:bg-primary/20' 
