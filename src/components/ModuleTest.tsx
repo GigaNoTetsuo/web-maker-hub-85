@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { SwipeCard } from "@/components/SwipeCard";
 import {
   CheckCircle2,
   XCircle,
@@ -107,24 +108,25 @@ const ModuleTest = ({ courseId, moduleId, moduleName, onTestComplete, onSkip }: 
       });
     } else {
       setStreak(0);
-      setLives(lives - 1);
+      const newLives = lives - 1;
+      setLives(newLives);
       
-      if (lives > 1) {
+      if (newLives > 0) {
         toast({
           title: "❌ Incorrect",
-          description: `${lives - 1} ${lives - 1 === 1 ? 'life' : 'lives'} remaining`,
+          description: `${newLives} ${newLives === 1 ? 'life' : 'lives'} remaining`,
           variant: "destructive",
         });
       }
     }
     
-    // Auto advance after short delay
+    // Move to next question after card animation
     setTimeout(() => {
       setShowFeedback(false);
       if (currentQuestion < questions.length - 1) {
         setCurrentQuestion(currentQuestion + 1);
       }
-    }, 1500);
+    }, 700);
   };
 
   const handleNext = () => {
@@ -396,7 +398,6 @@ const ModuleTest = ({ courseId, moduleId, moduleName, onTestComplete, onSkip }: 
     );
   }
 
-  const currentQ = questions[currentQuestion];
   const progress = ((currentQuestion + 1) / questions.length) * 100;
 
   return (
@@ -460,118 +461,50 @@ const ModuleTest = ({ courseId, moduleId, moduleName, onTestComplete, onSkip }: 
         <Progress value={progress} className="h-3" />
       </Card>
 
-      {/* Challenge Card */}
-      <Card className="p-6 bg-gradient-to-br from-card to-muted/20 border-2 border-primary/20 relative overflow-hidden">
-        {/* Decorative elements */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/10 to-transparent rounded-full -mr-16 -mt-16"></div>
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-secondary/10 to-transparent rounded-full -ml-12 -mb-12"></div>
-        
-        <div className="relative">
-          <div className="flex items-start gap-3 mb-4">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center flex-shrink-0">
-              <Lightbulb className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex-1">
-              <Badge className="mb-2 bg-primary/10 text-primary border-primary/20">
-                Challenge #{currentQuestion + 1}
-              </Badge>
-              <h3 className="text-xl font-bold text-foreground leading-relaxed">
-                {currentQ.question}
-              </h3>
-            </div>
-          </div>
+      {/* Swipeable Cards Stack */}
+      <div className="relative h-[600px] w-full max-w-2xl mx-auto">
+        {questions.map((q, index) => {
+          // Show current card and next 2 cards in stack
+          if (index < currentQuestion || index > currentQuestion + 2) {
+            return null;
+          }
+          
+          const offset = index - currentQuestion;
+          
+          return (
+            <SwipeCard
+              key={q.id}
+              question={q.question}
+              options={q.options}
+              questionNumber={index + 1}
+              totalQuestions={questions.length}
+              onSelectAnswer={(answerIndex) => {
+                handleSelectAnswer(answerIndex);
+              }}
+              isActive={index === currentQuestion}
+              zIndex={questions.length - offset}
+            />
+          );
+        })}
+      </div>
 
-          <div className="space-y-3 mt-6">
-            {currentQ.options.map((option, index) => {
-              const isSelected = selectedAnswers[currentQuestion] === index;
-              const showResult = showFeedback && isSelected;
-              const optionIcons = [Target, Shield, Award, Star];
-              const OptionIcon = optionIcons[index % optionIcons.length];
-              
-              return (
-                <button
-                  key={index}
-                  onClick={() => !showFeedback && handleSelectAnswer(index)}
-                  disabled={showFeedback}
-                  className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-300 group hover:scale-[1.02] ${
-                    showResult && isCorrect
-                      ? "border-green-500 bg-gradient-to-r from-green-500/20 to-emerald-500/10 animate-scale-in"
-                      : showResult && !isCorrect
-                      ? "border-red-500 bg-gradient-to-r from-red-500/20 to-pink-500/10 animate-scale-in"
-                      : isSelected
-                      ? "border-primary bg-gradient-to-r from-primary/10 to-secondary/5 shadow-md"
-                      : "border-border hover:border-primary/50 bg-muted/30 hover:bg-muted/50"
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center transition-all ${
-                        showResult && isCorrect
-                          ? "border-green-500 bg-green-500"
-                          : showResult && !isCorrect
-                          ? "border-red-500 bg-red-500"
-                          : isSelected
-                          ? "border-primary bg-primary"
-                          : "border-border bg-background group-hover:border-primary/50"
-                      }`}
-                    >
-                      {showResult && isCorrect ? (
-                        <CheckCircle2 className="w-5 h-5 text-white" />
-                      ) : showResult && !isCorrect ? (
-                        <XCircle className="w-5 h-5 text-white" />
-                      ) : isSelected ? (
-                        <CheckCircle2 className="w-5 h-5 text-white" />
-                      ) : (
-                        <OptionIcon className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
-                      )}
-                    </div>
-                    <span className={`flex-1 font-medium ${
-                      showResult ? "text-foreground" : isSelected ? "text-foreground" : "text-foreground/80"
-                    }`}>
-                      {option}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </Card>
-
-      {/* Navigation */}
-      <div className="flex items-center justify-between pt-2">
-        <Button
-          variant="outline"
-          onClick={handlePrevious}
-          disabled={currentQuestion === 0 || showFeedback}
-          className="border-border"
-        >
-          Previous
-        </Button>
-
-        {currentQuestion === questions.length - 1 ? (
+      {/* Complete Button (shown on last question) */}
+      {currentQuestion === questions.length - 1 && (
+        <div className="flex justify-center pt-4">
           <Button
             onClick={handleSubmitTest}
             disabled={selectedAnswers.some((a) => a === -1) || showFeedback}
             className="bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90"
+            size="lg"
           >
-            <Trophy className="w-4 h-4 mr-2" />
+            <Trophy className="w-5 h-5 mr-2" />
             Complete Challenge
           </Button>
-        ) : (
-          <Button
-            onClick={handleNext}
-            disabled={selectedAnswers[currentQuestion] === -1 || showFeedback}
-            className="bg-gradient-to-r from-secondary to-primary text-white hover:opacity-90"
-          >
-            Next Challenge
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {lives === 0 && (
-        <Card className="p-4 bg-gradient-to-r from-red-500/10 to-pink-500/5 border-2 border-red-500/30">
+        <Card className="p-4 bg-gradient-to-r from-red-500/10 to-pink-500/5 border-2 border-red-500/30 animate-fade-in">
           <div className="flex items-center gap-3">
             <XCircle className="w-6 h-6 text-red-500" />
             <div>
