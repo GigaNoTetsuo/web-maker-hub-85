@@ -1,9 +1,11 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   TreeDeciduous, 
   Sun, 
@@ -12,11 +14,62 @@ import {
   Recycle,
   Zap,
   BookOpen,
-  Clock
+  Clock,
+  Trophy
 } from "lucide-react";
 
 const Learn = () => {
   const navigate = useNavigate();
+  const [user, setUser] = useState<any>(null);
+  const [userProgress, setUserProgress] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate("/auth");
+    } else {
+      setUser(user);
+      loadProgress(user.id);
+    }
+  };
+
+  const loadProgress = async (userId: string) => {
+    const { data } = await supabase
+      .from("course_progress")
+      .select("*")
+      .eq("user_id", userId);
+
+    if (data) {
+      setUserProgress(data);
+    }
+    setLoading(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="container mx-auto px-4 py-8">
+          <p className="text-center text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const getUserCourseProgress = (courseId: number) => {
+    const progress = userProgress.find((p) => p.course_id === courseId.toString());
+    return progress ? progress.progress_percentage : 0;
+  };
+
+  const isCoursCompleted = (courseId: number) => {
+    const progress = getUserCourseProgress(courseId);
+    return progress === 100;
+  };
   
   const courses = [
     {
@@ -147,6 +200,9 @@ const Learn = () => {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course) => {
             const Icon = course.icon;
+            const userProgressValue = getUserCourseProgress(course.id);
+            const isCompleted = isCoursCompleted(course.id);
+            
             return (
               <Card
                 key={course.id}
@@ -175,32 +231,48 @@ const Learn = () => {
                   <span>{course.duration}</span>
                 </div>
 
-                {course.progress > 0 && (
+                {userProgressValue > 0 && (
                   <div className="mb-4">
                     <div className="flex items-center justify-between text-sm mb-2">
                       <span className="text-muted-foreground">Progress</span>
-                      <span className="text-primary font-medium">{course.progress}%</span>
+                      <span className="text-primary font-medium">{userProgressValue}%</span>
                     </div>
-                    <Progress value={course.progress} className="h-2" />
+                    <Progress value={userProgressValue} className="h-2" />
                   </div>
                 )}
 
-                <Button 
-                  onClick={() => navigate(`/learn/${course.id}`)}
-                  className={`w-full ${
-                    course.completed 
-                      ? 'bg-primary/10 text-primary hover:bg-primary/20' 
-                      : course.progress > 0 
-                        ? 'bg-secondary text-secondary-foreground hover:bg-secondary/90'
-                        : 'bg-primary text-primary-foreground hover:bg-primary-dark'
-                  }`}
-                >
-                  {course.completed 
-                    ? 'Review Course' 
-                    : course.progress > 0 
-                      ? 'Continue Learning' 
-                      : 'Start Course'}
-                </Button>
+                <div className="space-y-2">
+                  <Button 
+                    onClick={() => navigate(`/learn/${course.id}`)}
+                    className={`w-full ${
+                      isCompleted 
+                        ? 'bg-primary/10 text-primary hover:bg-primary/20' 
+                        : userProgressValue > 0 
+                          ? 'bg-secondary text-secondary-foreground hover:bg-secondary/90'
+                          : 'bg-primary text-primary-foreground hover:bg-primary-dark'
+                    }`}
+                  >
+                    {isCompleted 
+                      ? 'Review Course' 
+                      : userProgressValue > 0 
+                        ? 'Continue Learning' 
+                        : 'Start Course'}
+                  </Button>
+                  
+                  {isCompleted && (
+                    <Button
+                      onClick={() => {
+                        navigate(`/learn/${course.id}`);
+                        // Will show test option in CourseDetail when modules are complete
+                      }}
+                      variant="outline"
+                      className="w-full border-primary/30 hover:bg-primary/10"
+                    >
+                      <Trophy className="w-4 h-4 mr-2" />
+                      Take Certification Test
+                    </Button>
+                  )}
+                </div>
               </Card>
             );
           })}

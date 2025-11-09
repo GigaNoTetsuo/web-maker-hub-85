@@ -1,8 +1,11 @@
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import StatCard from "@/components/StatCard";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   TreeDeciduous, 
   DollarSign, 
@@ -11,11 +14,42 @@ import {
   Cloud,
   Droplets,
   TrendingUp,
-  Award
+  Award,
+  Trophy
 } from "lucide-react";
-import { Link } from "react-router-dom";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate("/auth");
+    } else {
+      setUser(user);
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="container mx-auto px-4 py-8">
+          <p className="text-center text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const userName = user?.user_metadata?.full_name?.split(" ")[0] || "User";
+  
   const recentActivities = [
     { id: 1, type: "course", title: "Completed Solar Panel Maintenance", date: "2 days ago", points: 50 },
     { id: 2, type: "job", title: "Tree Planting - Central Park", date: "1 week ago", earned: "$45" },
@@ -31,7 +65,7 @@ const Dashboard = () => {
         {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
-            Welcome back, Sarah! 👋
+            Welcome back, {userName}! 👋
           </h1>
           <p className="text-muted-foreground">
             Here's your impact on the environment and your progress
@@ -166,6 +200,13 @@ const Dashboard = () => {
                   <Button className="w-full justify-start" variant="outline">
                     <BookOpen className="w-4 h-4 mr-2" />
                     Browse Courses
+                  </Button>
+                </Link>
+                
+                <Link to="/learn">
+                  <Button className="w-full justify-start" variant="outline">
+                    <Trophy className="w-4 h-4 mr-2" />
+                    Take Certification Test
                   </Button>
                 </Link>
                 
