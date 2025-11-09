@@ -65,8 +65,8 @@ const SubmitWork = () => {
     setIsVerified(false);
 
     try {
-      // Load OCR model
-      const detector = await pipeline("image-to-text", "Xenova/trocr-small-printed");
+      // Load OCR model that supports both printed and handwritten text
+      const detector = await pipeline("image-to-text", "Xenova/trocr-base-handwritten");
 
       // Create image URL from file
       const imageUrl = URL.createObjectURL(file);
