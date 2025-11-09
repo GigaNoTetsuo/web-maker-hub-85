@@ -13,6 +13,7 @@ const AdminJobsManagement = () => {
   const [jobs, setJobs] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
   const [workSubmissions, setWorkSubmissions] = useState<any[]>([]);
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
@@ -21,6 +22,7 @@ const AdminJobsManagement = () => {
     fetchJobs();
     fetchApplications();
     fetchWorkSubmissions();
+    fetchWithdrawals();
   }, []);
 
   const fetchJobs = async () => {
@@ -89,6 +91,54 @@ const AdminJobsManagement = () => {
     setWorkSubmissions(data || []);
   };
 
+  const fetchWithdrawals = async () => {
+    const { data, error } = await supabase
+      .from("withdrawals")
+      .select(`
+        *,
+        profiles!withdrawals_user_id_fkey (full_name)
+      `)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch withdrawals",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setWithdrawals(data || []);
+  };
+
+  const updateWithdrawalStatus = async (withdrawalId: string, status: string) => {
+    const { error } = await supabase
+      .from("withdrawals")
+      .update({
+        status,
+        processed_at: new Date().toISOString(),
+        processed_by: (await supabase.auth.getUser()).data.user?.id,
+      })
+      .eq("id", withdrawalId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update withdrawal",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Success",
+      description: `Withdrawal ${status}`,
+    });
+
+    fetchWithdrawals();
+  };
+
   const updateJobStatus = async (jobId: string, status: string) => {
     const { error } = await supabase
       .from("micro_jobs")
@@ -137,6 +187,22 @@ const AdminJobsManagement = () => {
   };
 
   const handleVerifyWork = async (jobId: string, isApproved: boolean) => {
+    // Get the job details first to get user_id and benefit_points
+    const { data: jobData, error: jobError } = await supabase
+      .from("micro_jobs")
+      .select("user_id, benefit_points")
+      .eq("id", jobId)
+      .single();
+
+    if (jobError) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch job details",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const updateData: any = {
       status: isApproved ? "verified" : "rejected",
       verified_by: (await supabase.auth.getUser()).data.user?.id,
@@ -163,9 +229,26 @@ const AdminJobsManagement = () => {
       return;
     }
 
+    // If approved, add points to user's profile
+    if (isApproved && jobData.benefit_points) {
+      const { error: pointsError } = await supabase.rpc(
+        "increment_user_points",
+        {
+          p_user_id: jobData.user_id,
+          p_points: jobData.benefit_points,
+        }
+      );
+
+      if (pointsError) {
+        console.error("Failed to add points:", pointsError);
+      }
+    }
+
     toast({
       title: "Success",
-      description: isApproved ? "Work verified and payment processed" : "Work rejected",
+      description: isApproved 
+        ? `Work verified, payment processed, and ${jobData.benefit_points} points added!` 
+        : "Work rejected",
     });
 
     setSelectedJob(null);
@@ -176,9 +259,10 @@ const AdminJobsManagement = () => {
 
   return (
     <Tabs defaultValue="applications" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="applications">Applications</TabsTrigger>
         <TabsTrigger value="verification">Work Verification</TabsTrigger>
+        <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
         <TabsTrigger value="posted-jobs">Posted Jobs</TabsTrigger>
       </TabsList>
 
@@ -334,6 +418,85 @@ const AdminJobsManagement = () => {
                           </Button>
                         )}
                       </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="withdrawals">
+        <Card>
+          <CardHeader>
+            <CardTitle>Withdrawal Requests</CardTitle>
+            <CardDescription>Review and process user withdrawal requests</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {withdrawals.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  No withdrawal requests yet
+                </p>
+              ) : (
+                withdrawals.map((withdrawal) => (
+                  <div key={withdrawal.id} className="border p-4 rounded-lg space-y-2">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-semibold">
+                            {withdrawal.profiles?.full_name || "Unknown User"}
+                          </h3>
+                          <Badge variant={
+                            withdrawal.status === "approved" 
+                              ? "default" 
+                              : withdrawal.status === "rejected"
+                              ? "destructive"
+                              : "secondary"
+                          }>
+                            {withdrawal.status}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Points:</span>
+                            <span className="ml-2 font-semibold">{withdrawal.points_withdrawn}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Amount:</span>
+                            <span className="ml-2 font-semibold">₨{parseFloat(withdrawal.amount_pkr).toFixed(2)}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Method:</span>
+                            <span className="ml-2">{withdrawal.payment_method}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Details:</span>
+                            <span className="ml-2">{withdrawal.payment_details?.details || "N/A"}</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Requested: {new Date(withdrawal.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                      {withdrawal.status === "pending" && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => updateWithdrawalStatus(withdrawal.id, "approved")}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => updateWithdrawalStatus(withdrawal.id, "rejected")}
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))

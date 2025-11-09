@@ -6,7 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import Certificate from "@/components/Certificate";
@@ -22,18 +25,25 @@ import {
   Star,
   TrendingUp,
   LogOut,
-  FileText
+  FileText,
+  Wallet,
+  DollarSign
 } from "lucide-react";
 
 const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [skills, setSkills] = useState<any[]>([]);
   const [certificates, setCertificates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCertificate, setSelectedCertificate] = useState<any>(null);
   const [showCertificateDialog, setShowCertificateDialog] = useState(false);
+  const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
+  const [withdrawPoints, setWithdrawPoints] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [paymentDetails, setPaymentDetails] = useState("");
 
   useEffect(() => {
     checkAuth();
@@ -50,6 +60,17 @@ const Profile = () => {
   };
 
   const loadUserData = async (userId: string) => {
+    // Load profile with points
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
+
+    if (profileData) {
+      setProfile(profileData);
+    }
+
     // Load skills
     const { data: skillsData } = await supabase
       .from("user_skills")
@@ -71,6 +92,69 @@ const Profile = () => {
     }
 
     setLoading(false);
+  };
+
+  const handleWithdraw = async () => {
+    const points = parseInt(withdrawPoints);
+    
+    if (!points || points < 10) {
+      toast({
+        title: "Invalid Amount",
+        description: "Minimum withdrawal is 10 points (₨1)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (points > profile.points) {
+      toast({
+        title: "Insufficient Points",
+        description: "You don't have enough points",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!paymentMethod || !paymentDetails) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide payment method and details",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const amountPkr = points / 10;
+
+    const { error } = await supabase
+      .from("withdrawals")
+      .insert({
+        user_id: user.id,
+        points_withdrawn: points,
+        amount_pkr: amountPkr,
+        payment_method: paymentMethod,
+        payment_details: { details: paymentDetails },
+      });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to submit withdrawal request",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Success",
+      description: `Withdrawal request for ₨${amountPkr.toFixed(2)} submitted successfully!`,
+    });
+
+    setShowWithdrawDialog(false);
+    setWithdrawPoints("");
+    setPaymentMethod("");
+    setPaymentDetails("");
+    loadUserData(user.id);
   };
 
   const handleSignOut = async () => {
@@ -356,15 +440,41 @@ const Profile = () => {
 
           {/* Stats Sidebar */}
           <div className="space-y-6">
+            {/* Points Card */}
             <Card className="p-6 bg-gradient-primary text-primary-foreground">
+              <div className="flex items-center gap-2 mb-4">
+                <Wallet className="w-5 h-5" />
+                <h3 className="text-lg font-bold">My Points</h3>
+              </div>
+              <div className="text-center">
+                <div className="text-5xl font-bold mb-2">{profile?.points || 0}</div>
+                <p className="text-sm opacity-90 mb-4">
+                  ≈ ₨{((profile?.points || 0) / 10).toFixed(2)}
+                </p>
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => setShowWithdrawDialog(true)}
+                  disabled={!profile?.points || profile.points < 10}
+                >
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Withdraw Cash
+                </Button>
+                <p className="text-xs opacity-75 mt-2">
+                  10 points = ₨1
+                </p>
+              </div>
+            </Card>
+
+            <Card className="p-6 bg-gradient-card text-foreground border-border">
               <h3 className="text-lg font-bold mb-4">Impact Score</h3>
               <div className="text-center">
                 <div className="text-5xl font-bold mb-2">847</div>
-                <p className="text-sm opacity-90 mb-4">Top 10% of all users</p>
-                <div className="w-full bg-primary-foreground/20 rounded-full h-2 mb-2">
-                  <div className="bg-primary-foreground h-2 rounded-full" style={{ width: "85%" }} />
+                <p className="text-sm text-muted-foreground mb-4">Top 10% of all users</p>
+                <div className="w-full bg-muted rounded-full h-2 mb-2">
+                  <div className="bg-primary h-2 rounded-full" style={{ width: "85%" }} />
                 </div>
-                <p className="text-xs opacity-75">153 points to next tier</p>
+                <p className="text-xs text-muted-foreground">153 points to next tier</p>
               </div>
             </Card>
 
@@ -422,6 +532,77 @@ const Profile = () => {
               issuedDate={selectedCertificate.issued_at}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Withdraw Dialog */}
+      <Dialog open={showWithdrawDialog} onOpenChange={setShowWithdrawDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Withdraw Points as Cash</DialogTitle>
+            <DialogDescription>
+              Convert your points to cash. 10 points = ₨1
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="points">Points to Withdraw</Label>
+              <Input
+                id="points"
+                type="number"
+                min="10"
+                max={profile?.points || 0}
+                value={withdrawPoints}
+                onChange={(e) => setWithdrawPoints(e.target.value)}
+                placeholder="Enter points (min 10)"
+              />
+              {withdrawPoints && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  You will receive: ₨{(parseInt(withdrawPoints) / 10).toFixed(2)}
+                </p>
+              )}
+            </div>
+            
+            <div>
+              <Label htmlFor="method">Payment Method</Label>
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bank">Bank Transfer</SelectItem>
+                  <SelectItem value="easypaisa">EasyPaisa</SelectItem>
+                  <SelectItem value="jazzcash">JazzCash</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="details">
+                {paymentMethod === "bank" 
+                  ? "Bank Account Details" 
+                  : "Mobile Number"}
+              </Label>
+              <Input
+                id="details"
+                value={paymentDetails}
+                onChange={(e) => setPaymentDetails(e.target.value)}
+                placeholder={
+                  paymentMethod === "bank"
+                    ? "Account number and bank name"
+                    : "03XX-XXXXXXX"
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowWithdrawDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleWithdraw}>
+              Submit Request
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -375,18 +375,21 @@ export type Database = {
           created_at: string | null
           full_name: string | null
           id: string
+          points: number
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string | null
           full_name?: string | null
           id: string
+          points?: number
         }
         Update: {
           avatar_url?: string | null
           created_at?: string | null
           full_name?: string | null
           id?: string
+          points?: number
         }
         Relationships: []
       }
@@ -511,6 +514,63 @@ export type Database = {
           },
         ]
       }
+      withdrawals: {
+        Row: {
+          admin_notes: string | null
+          amount_pkr: number
+          created_at: string | null
+          id: string
+          payment_details: Json | null
+          payment_method: string | null
+          points_withdrawn: number
+          processed_at: string | null
+          processed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          amount_pkr: number
+          created_at?: string | null
+          id?: string
+          payment_details?: Json | null
+          payment_method?: string | null
+          points_withdrawn: number
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          amount_pkr?: number
+          created_at?: string | null
+          id?: string
+          payment_details?: Json | null
+          payment_method?: string | null
+          points_withdrawn?: number
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawals_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "withdrawals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -522,6 +582,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_user_points: {
+        Args: { p_points: number; p_user_id: string }
+        Returns: undefined
       }
     }
     Enums: {
