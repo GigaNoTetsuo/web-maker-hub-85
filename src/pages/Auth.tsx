@@ -16,9 +16,21 @@ const Auth = () => {
 
   useEffect(() => {
     // Check if user is already logged in
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
-        navigate("/dashboard");
+        // Check if user has admin role
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", session.user.id)
+          .eq("role", "admin")
+          .maybeSingle();
+
+        if (roles) {
+          navigate("/admin");
+        } else {
+          navigate("/dashboard");
+        }
       }
     });
   }, [navigate]);
@@ -32,7 +44,7 @@ const Auth = () => {
     const password = formData.get("password") as string;
     const fullName = formData.get("fullName") as string;
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -52,11 +64,29 @@ const Auth = () => {
         variant: "destructive",
       });
     } else {
-      toast({
-        title: "Success!",
-        description: "Account created successfully. Logging you in...",
-      });
-      navigate("/dashboard");
+      // Check if user has admin role (for admin1@gmail.com)
+      if (data.user) {
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", data.user.id)
+          .eq("role", "admin")
+          .maybeSingle();
+
+        if (roles) {
+          toast({
+            title: "Admin account created!",
+            description: "Redirecting to admin panel...",
+          });
+          navigate("/admin");
+        } else {
+          toast({
+            title: "Success!",
+            description: "Account created successfully. Logging you in...",
+          });
+          navigate("/dashboard");
+        }
+      }
     }
   };
 
@@ -68,7 +98,7 @@ const Auth = () => {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -82,11 +112,27 @@ const Auth = () => {
         variant: "destructive",
       });
     } else {
-      toast({
-        title: "Welcome back!",
-        description: "Logged in successfully.",
-      });
-      navigate("/dashboard");
+      // Check if user has admin role
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      if (roles) {
+        toast({
+          title: "Welcome back, Admin!",
+          description: "Redirecting to admin panel...",
+        });
+        navigate("/admin");
+      } else {
+        toast({
+          title: "Welcome back!",
+          description: "Logged in successfully.",
+        });
+        navigate("/dashboard");
+      }
     }
   };
 
