@@ -371,10 +371,12 @@ const SubmitWork = () => {
                             <span className="text-sm font-medium">Token not detected - please upload a clearer image</span>
                           </div>
                         )}
-                        {!isVerifying && detectedText && (
+                        {!isVerifying && mediaFile && (
                           <div className="p-3 bg-secondary/50 rounded-lg border border-border">
                             <p className="text-xs font-medium text-muted-foreground mb-1">Model Detected:</p>
-                            <p className="text-sm font-mono text-foreground">{detectedText || "No text detected"}</p>
+                            <p className="text-sm font-mono text-foreground break-words">
+                              {detectedText || "No text detected"}
+                            </p>
                             <p className="text-xs text-muted-foreground mt-1">Expected: {verificationToken}</p>
                           </div>
                         )}
