@@ -1,11 +1,9 @@
+import { useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trophy, Award, Calendar, Share2, Download } from "lucide-react";
+import { Trophy, Award, Calendar, Share2, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
-import { useRef } from "react";
 
 interface ModuleCertificateProps {
   moduleName: string;
@@ -47,36 +45,12 @@ const ModuleCertificate = ({
     }
   };
 
-  const handleDownload = async () => {
-    if (!certificateRef.current) return;
-
-    try {
-      const canvas = await html2canvas(certificateRef.current, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-      });
-
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({
-        orientation: "landscape",
-        unit: "px",
-        format: [canvas.width, canvas.height],
-      });
-
-      pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
-      pdf.save(`${moduleName}-Certificate-${certificateNumber}.pdf`);
-
-      toast({
-        title: "Certificate Downloaded",
-        description: "Your module certificate has been saved as PDF",
-      });
-    } catch (error) {
-      toast({
-        title: "Download Failed",
-        description: "Unable to download certificate. Please try again.",
-        variant: "destructive",
-      });
-    }
+  const handlePrint = () => {
+    window.print();
+    toast({
+      title: "Print Certificate",
+      description: "Use your browser's print dialog to save as PDF",
+    });
   };
 
   return (
@@ -157,12 +131,12 @@ const ModuleCertificate = ({
           Share Certificate
         </Button>
         <Button
-          onClick={handleDownload}
+          onClick={handlePrint}
           variant="outline"
           className="flex-1 border-primary/30 hover:bg-primary/10"
         >
-          <Download className="w-4 h-4 mr-2" />
-          Download PDF
+          <Printer className="w-4 h-4 mr-2" />
+          Print / Save PDF
         </Button>
       </div>
     </div>
